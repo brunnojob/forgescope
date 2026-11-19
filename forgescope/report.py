@@ -4,6 +4,7 @@ import json
 import re
 import sqlite3
 import subprocess
+from contextlib import closing
 from pathlib import Path
 from .impact import inventory, analyze
 
@@ -141,6 +142,7 @@ def save(report, directory):
 
 def record_history(report, database):
     path=Path(database);path.parent.mkdir(parents=True,exist_ok=True)
-    with sqlite3.connect(path) as db:
-        db.execute('CREATE TABLE IF NOT EXISTS runs (id INTEGER PRIMARY KEY, created_at TEXT DEFAULT CURRENT_TIMESTAMP, project TEXT, report TEXT)')
-        db.execute('INSERT INTO runs(project,report) VALUES (?,?)',(report['project'],json.dumps(report)))
+    with closing(sqlite3.connect(path)) as db:
+        with db:
+            db.execute('CREATE TABLE IF NOT EXISTS runs (id INTEGER PRIMARY KEY, created_at TEXT DEFAULT CURRENT_TIMESTAMP, project TEXT, report TEXT)')
+            db.execute('INSERT INTO runs(project,report) VALUES (?,?)',(report['project'],json.dumps(report)))

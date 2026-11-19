@@ -2,6 +2,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from forgescope.impact import inventory
 from forgescope.report import make_report,save,baseline,record_history,normalize_path
@@ -26,10 +27,10 @@ class ReportTests(unittest.TestCase):
     def test_report_html_escapes_script_end(self):
         r=self.fixture();r['project']='</script><img src=x onerror=alert(1)>'
         with tempfile.TemporaryDirectory() as d:
-            save(r,d);text=(Path(d)/'index.html').read_text()
+            save(r,d);text=(Path(d)/'index.html').read_text(encoding='utf-8')
             self.assertNotIn('</script><img',text)
             self.assertIn('\\u003c/script',text)
-            self.assertEqual(json.loads((Path(d)/'report.json').read_text())['project'],r['project'])
+            self.assertEqual(json.loads((Path(d)/'report.json').read_text(encoding='utf-8'))['project'],r['project'])
     def test_inventory_excludes_secrets_and_symlinks(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d);(p/'.env').write_text('SECRET=x');(p/'ok.py').write_text('x=1')
@@ -46,7 +47,7 @@ class ReportTests(unittest.TestCase):
     def test_history(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/'history.sqlite';record_history(self.fixture(),p)
-            with sqlite3.connect(p) as db:self.assertEqual(db.execute('SELECT COUNT(*) FROM runs').fetchone()[0],1)
+            with closing(sqlite3.connect(p)) as db:self.assertEqual(db.execute('SELECT COUNT(*) FROM runs').fetchone()[0],1)
     def test_path_rejection(self):
         for path in ['../escape','/tmp/a','C:\\x.py']:
             with self.assertRaises(ValueError):normalize_path(path)
