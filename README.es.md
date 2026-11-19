@@ -1,0 +1,43 @@
+# ForgeScope
+
+**Evidencias antes de editar. Java 21 + C#/.NET 10.**
+
+[English](README.md) · [Português](README.pt-BR.md) · [Demostración en español](https://brunnojob.github.io/forgescope/es.html)
+
+ForgeScope reúne análisis de impacto de código, revisión de parches, diagnósticos de CI y mantenimiento del repositorio en un informe local. Integra versiones Java de las reglas de PatchScope, CIFuse, RepoRelief y DevRescue, junto al catálogo de RevScope.
+
+## Demostración guiada
+
+Abre la demostración y pulsa **Iniciar demostración**. El recorrido de seis pasos presenta el resumen, las dependencias, las pruebas sugeridas, los analizadores, las referencias y las evidencias. Puedes avanzar, retroceder, cerrar o finalizar. Los enlaces de idioma conservan el paso actual.
+
+La interfaz completa está disponible en español, inglés y portugués de Brasil, incluidos los títulos de hallazgos, las acciones sugeridas, los estados y las limitaciones. Las rutas, los nombres de métodos y las evidencias originales de registros y compiladores se conservan para no alterar su significado. La URL identifica el idioma; también funciona sin conexión.
+
+## Compilar y ejecutar
+
+Requiere JDK 21 y SDK .NET 10. Git es necesario para comparar revisiones y validar parches.
+
+```sh
+git clone https://github.com/brunnojob/forgescope.git
+cd forgescope
+dotnet build dotnet/ForgeScope.Worker -c Release
+dotnet build dotnet/ForgeScope.Workbench -c Release
+java tools/Dependencies.java
+java tools/Build.java test
+java -jar build/forgescope.jar examples/sample --changed csharp/Pricing.cs --diff examples/change.diff --log examples/build.log --csharp-worker dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll --output .forgescope
+```
+
+Abre `.forgescope/es.html` para ver el informe sin conexión. Para el panel local con filtros y nuevos análisis:
+
+```sh
+dotnet dotnet/ForgeScope.Workbench/bin/Release/net10.0/ForgeScope.Workbench.dll --report .forgescope/report.json --repo examples/sample --jar build/forgescope.jar --worker dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll
+```
+
+Visita `http://127.0.0.1:8765/?lang=es`. Selecciona el idioma y aplica los filtros. Las nuevas ejecuciones conservan el idioma y el tema. GitHub Pages presenta el ejemplo; los análisis de tus repositorios se ejecutan localmente.
+
+## Límites
+
+Las dependencias indican impacto potencial y no demuestran fallos. Los analizadores Java y C# usan un entorno de compilación aislado, sin ejecutar el proyecto. Los avisos de revisión son heurísticos y no constituyen una auditoría de seguridad. Los tests candidatos no representan cobertura medida. La compatibilidad con Python se limita a imports léxicos. Revisa los informes antes de compartirlos.
+
+[Arquitectura](docs/ARCHITECTURE.md) · [Migración](docs/MIGRATION-0.3.md) · [Licencias](third_party/README.md)
+
+MIT. God first.

@@ -19,12 +19,15 @@ try
     Check(ready,"health readiness");
     string page=await client.GetStringAsync("/");Check(page.Contains("Java 21 + C#/.NET 10",StringComparison.Ordinal),"Java/.NET identity");Check(!page.Contains("<script",StringComparison.OrdinalIgnoreCase),"no custom browser scripts");
     var pt=await client.GetStringAsync("/?lang=pt&theme=light&engine=impact");Check(pt.Contains("Painel local de investigação",StringComparison.Ordinal),"Portuguese interface");Check(pt.Contains("class=\"light\"",StringComparison.Ordinal),"light theme");
+    var es=await client.GetStringAsync("/?lang=es&engine=all");Check(es.Contains("lang=\"es\"",StringComparison.Ordinal)&&es.Contains("Panel local de investigaci",StringComparison.Ordinal),"Spanish document and interface");
+    Check(!es.Contains("Review this workflow privilege boundary",StringComparison.Ordinal),"Finding titles translated");
+    Check(es.Contains("id=\"tour-6\"",StringComparison.Ordinal)&&es.Contains("#tour-1",StringComparison.Ordinal),"Guided demonstration targets");
     using(var data=JsonDocument.Parse(await client.GetStringAsync("/report.json")))Check(data.RootElement.GetProperty("version").GetString()=="0.3.0","JSON export");
     using(var data=JsonDocument.Parse(await client.GetStringAsync("/report.sarif")))Check(data.RootElement.GetProperty("version").GetString()=="2.1.0","SARIF export");
     using(var denied=await client.PostAsync("/scan",new FormUrlEncodedContent(new Dictionary<string,string>{{"nonce","wrong"},{"base",""}})))Check(denied.StatusCode==HttpStatusCode.Forbidden,"CSRF rejection");
     string token=Regex.Match(page,"name=\"nonce\" value=\"([^\"]+)\"").Groups[1].Value;Check(token.Length==64,"scan nonce present");
     using(var request=new HttpRequestMessage(HttpMethod.Post,"/scan")){request.Headers.Add("Origin","https://external.example");request.Content=new FormUrlEncodedContent(new Dictionary<string,string>{{"nonce",token}});using var response=await client.SendAsync(request);Check(response.StatusCode==HttpStatusCode.Forbidden,"cross-origin scan rejection");}
-    using(var response=await client.PostAsync("/scan",new FormUrlEncodedContent(new Dictionary<string,string>{{"nonce",token},{"base",""},{"changed","java/src/shop/Pricing.java"}})))Check(response.StatusCode==HttpStatusCode.Redirect,"real Java scan from C# workbench");
+    using(var response=await client.PostAsync("/scan",new FormUrlEncodedContent(new Dictionary<string,string>{{"nonce",token},{"base",""},{"changed","java/src/shop/Pricing.java"},{"lang","es"},{"theme","light"}}))){Check(response.StatusCode==HttpStatusCode.Redirect,"real Java scan from C# workbench");Check(response.Headers.Location?.ToString()=="/?lang=es&theme=light","scan preserves selected language and theme");}
     using(var data=JsonDocument.Parse(await File.ReadAllTextAsync(report)))Check(data.RootElement.GetProperty("impact").GetProperty("engines").GetProperty("csharp").GetProperty("status").GetString()=="ok","scan invokes Roslyn worker");
     Console.WriteLine($"C# workbench HTTP: {checks} end-to-end checks passed");
 }

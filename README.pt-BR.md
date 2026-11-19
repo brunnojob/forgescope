@@ -43,3 +43,9 @@ A compatibilidade com arquivos Python passou a ser leitura léxica de imports; a
 GitHub Pages mostra um relatório estático fictício. O painel .NET e as análises reais rodam em localhost. O catálogo RevScope indica ferramentas, sem executar engenharia reversa.
 
 Código MIT, com créditos e licenças originais preservados.
+
+## Idiomas e demonstração guiada
+
+O relatório no [Pages](https://brunnojob.github.io/forgescope/pt-br.html) está disponível integralmente em **PT-BR, inglês e espanhol**. Os links de idioma trocam títulos, resultados gerados, ações, estados, limitações e o tour. Caminhos, nomes de métodos e evidências originais de logs/compiladores são preservados.
+
+Clique em **Iniciar demonstração** para percorrer seis etapas, com próximo, anterior, fechar e concluir. O tour funciona no Pages e nos relatórios offline, sem JavaScript. No painel C#, selecione o idioma e aplique os filtros; novas análises preservam idioma e tema.

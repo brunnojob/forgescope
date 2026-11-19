@@ -6,7 +6,7 @@
 
 **Java 21 core. C#/.NET 10 workbench and Roslyn analysis.**
 
-[Static example report](https://brunnojob.github.io/forgescope/) · [Português](README.pt-BR.md) · [Architecture](docs/ARCHITECTURE.md) · [Migration notes](docs/MIGRATION-0.3.md)
+[Static example report](https://brunnojob.github.io/forgescope/) · [Português](README.pt-BR.md) · [Español](README.es.md) · [Architecture](docs/ARCHITECTURE.md) · [Migration notes](docs/MIGRATION-0.3.md)
 
 [![CI](https://github.com/brunnojob/forgescope/actions/workflows/ci.yml/badge.svg)](https://github.com/brunnojob/forgescope/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-21-ed8b00)
@@ -17,7 +17,7 @@
 
 Changing unfamiliar code means reconstructing dependencies, reviewing patches, reading CI logs and finding maintenance work across separate tools. ForgeScope puts those evidence streams into one local investigation report.
 
-**Version 0.3 migrates application logic to Java and C#. Python and Node are no longer runtime or build requirements.** HTML/CSS remain presentation formats. The portable report uses no JavaScript; the interactive localhost workbench runs its application logic in C# on ASP.NET Core.
+**Version 0.3 migrates application logic to Java and C#. Python and Node are no longer runtime or build requirements.** HTML/CSS remain presentation formats. The portable report uses native HTML/CSS for language navigation and a six-step guided tour. The interactive localhost workbench runs its application logic in C# on ASP.NET Core.
 
 ## What is implemented
 
@@ -30,7 +30,7 @@ Changing unfamiliar code means reconstructing dependencies, reviewing patches, r
 | Maintenance | Java implementation of repository essentials, relative Markdown targets, maintenance markers and conventional test naming | Heuristics; no measured test coverage |
 | Analysis guidance | RevScope catalog snapshot and artifact signals | No binary execution, decompiler or firmware extractor |
 | Reports and history | Java HTML/JSON/Markdown/SARIF exporters and optional SQLite JDBC history | Reports retain derived evidence; review them before sharing |
-| Local interface | C# ASP.NET Core, server-rendered filters, dependency paths, EN/PT, light/dark themes, exports and a local scan form | Binds only to 127.0.0.1; configured repository only; no cloud account |
+| Local interface | C# ASP.NET Core, server-rendered filters, dependency paths, EN/PT-BR/ES, light/dark themes, exports and a local scan form | Binds only to 127.0.0.1; configured repository only; no cloud account |
 
 An import/reference path shows potential impact. A shared file or missing symbol does not independently prove that a change caused a failure. External dependencies absent from the isolated compiler environment produce visible diagnostics rather than invented certainty.
 
@@ -58,13 +58,13 @@ Generate the reproducible Java/C# fixture report:
 java -jar build/forgescope.jar examples/sample --changed java/src/shop/Pricing.java --changed csharp/Pricing.cs --diff examples/change.diff --log examples/build.log --csharp-worker dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll --output .forgescope --fail-on engine-error
 ```
 
-Open `.forgescope/index.html` directly for a portable, offline report. For the full local interface:
+Open `.forgescope/index.html` directly for a portable, offline report. Use the language links for **Português (Brasil), English or Español**; the entire interface, generated findings, actions, limitations and tour change together. Source paths, identifiers and original log/compiler evidence stay unchanged. The selection is encoded in the page URL and works offline. Click **Start demonstration** for a six-step tour with previous, next, close and finish controls. Each tour step also offers language links that retain the current step. For the full local interface:
 
 ```sh
 dotnet dotnet/ForgeScope.Workbench/bin/Release/net10.0/ForgeScope.Workbench.dll --report .forgescope/report.json --repo examples/sample --jar build/forgescope.jar --worker dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll
 ```
 
-Visit **http://127.0.0.1:8765**. Use the GET form to filter findings, select a source file, choose English/Portuguese or switch theme. The POST scan form uses a random nonce, checks browser origins and invokes the Java CLI with explicit arguments, without a shell. It can scan only the repository configured at startup. Omit `--repo` and `--jar` for read-only report viewing. To scan the non-Git fixture, clear the Git base field and provide one of its source paths.
+Visit **http://127.0.0.1:8765**. Use the GET form to filter findings, select a source file, choose Portuguese/English/Spanish or switch theme. The POST scan form uses a random nonce, checks browser origins and invokes the Java CLI with explicit arguments, without a shell. It can scan only the repository configured at startup. Omit `--repo` and `--jar` for read-only report viewing. To scan the non-Git fixture, clear the Git base field and provide one of its source paths.
 
 GitHub Pages hosts only the static fixture report. It cannot run Java, ASP.NET Core, Roslyn or SQLite. All interactive scans happen locally.
 

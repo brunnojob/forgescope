@@ -54,6 +54,17 @@ public final class TestMain {
             var previous=Json.parse(Json.write(report));Report.baseline(report,previous);check(num(obj(report.get("comparison")).get("new"))==0,"Baseline stable identities");rejects(()->Report.baseline(report,m("schema_version",1,"findings",List.of("bad"))),"Malformed baseline entries");
             try{Class.forName("org.sqlite.JDBC");Report.history(report,repo.resolve("history.sqlite"));try(var connection=DriverManager.getConnection("jdbc:sqlite:"+repo.resolve("history.sqlite"));var statement=connection.createStatement();var rs=statement.executeQuery("SELECT COUNT(*) FROM runs")){check(rs.next()&&rs.getInt(1)==1,"SQLite durable history");}}catch(ClassNotFoundException e){System.out.println("SQLite test skipped: add JDBC jars to build/lib for full verification");}
         }finally{delete(repo);}
+        for(String lang:List.of("en","pt-BR","es")){
+            String localized=Html.render(m("project","locale-test","impact",m("modules",0),"engines",m(),"inventory",m()),lang);
+            check(localized.contains("<html lang=\""+lang+"\""),"Report language "+lang);
+            for(int step=1;step<=6;step++)check(localized.contains("id=\"tour-"+step+"\""),"Tour target "+lang+" / "+step);
+            check(localized.contains("href=\"pt-br.html\"")&&localized.contains("href=\"es.html\""),"Offline language links "+lang);
+            check(!localized.contains("<script"),"Native tour without JS "+lang);
+        }
+        check(I18n.language("pt").equals("pt-BR")&&I18n.language("bad\"><img").equals("en"),"Language aliases and input whitelist");
+        for(Object engine:obj(Report.resource("log-rules.json")).values())for(Object value:arr(engine))for(String field:List.of("title","action")){
+            String original=str(obj(value).get(field));check(!I18n.text(original,"pt-BR").equals(original)&&!I18n.text(original,"es").equals(original),"Log catalog translated: "+field);
+        }
         gitAndValidation();
         if(args.length==2&&args[0].equals("--csharp-worker")){var c=Impact.analyze(Map.of("Pricing.cs","namespace Shop; public static class Pricing { public static int Total(int x)=>x; }","Orders.cs","namespace Shop; public static class Orders { public static int Run()=>Pricing.Total(1); }"),List.of("Pricing.cs"),null,Path.of(args[1]));check(arr(c.get("affected")).size()==2,"Java-to-.NET protocol transitive impact");check(str(obj(obj(c.get("engines")).get("csharp")).get("status")).equals("ok"),"Roslyn worker status");}
         System.out.println("Java core: "+count+" checks passed");
