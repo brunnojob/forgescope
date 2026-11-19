@@ -60,11 +60,11 @@ public final class TestMain {
     }
     static void gitAndValidation()throws Exception{
         Path root=Files.createTempDirectory("forgescope-git-");Path patch=Files.createTempFile("forgescope-patch-",".diff");
-        try{git(root,"init");git(root,"config","user.name","Test");git(root,"config","user.email","test@example.com");
+        try{git(root,"init");git(root,"config","core.autocrlf","false");git(root,"config","user.name","Test");git(root,"config","user.email","test@example.com");
             Files.writeString(root.resolve("value.txt"),"before\n");Files.writeString(root.resolve("Check.java"),"import java.nio.file.*; class Check { public static void main(String[] a) throws Exception { if(!Files.readString(Path.of(\"value.txt\")).equals(\"after\\n\")) System.exit(1); } }");
             git(root,"add",".");git(root,"commit","-m","fixture");Files.writeString(root.resolve("value.txt"),"after\n");var diff=Processes.diff(root,"HEAD");check(diff.paths().equals(List.of("value.txt")),"Git changed inventory");check(diff.text().contains("+after"),"Git tracked working-tree diff");rejects(()->Processes.diff(root,"--output=bad"),"Git option injection rejection");
             Files.writeString(patch,diff.text());git(root,"checkout","--","value.txt");
-            var valid=Validation.validate(root,patch,List.of(Path.of(System.getProperty("java.home"),"bin","java").toString(),"Check.java"),30);check(Boolean.TRUE.equals(valid.get("validated")),"Before-fail / after-pass patch validation");check(Files.readString(root.resolve("value.txt")).equals("before\n"),"Original checkout preserved");check(Processes.run(Processes.git(root,"status","--porcelain"),root,null,10,10000).stdout().isBlank(),"Validation worktree cleanup");
+            var valid=Validation.validate(root,patch,List.of(Path.of(System.getProperty("java.home"),"bin","java").toString(),"Check.java"),30);check(Boolean.TRUE.equals(valid.get("validated")),"Before-fail / after-pass patch validation: "+Json.write(valid));check(Files.readString(root.resolve("value.txt")).equals("before\n"),"Original checkout preserved");check(Processes.run(Processes.git(root,"status","--porcelain"),root,null,10,10000).stdout().isBlank(),"Validation worktree cleanup");
         }finally{delete(root);Files.deleteIfExists(patch);}
     }
     static void git(Path root,String... args)throws Exception{var result=Processes.run(Processes.git(root,args),root,null,20,2000000);if(result.code()!=0)throw new Exception(result.stderr());}
