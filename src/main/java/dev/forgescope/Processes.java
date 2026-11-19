@@ -17,7 +17,19 @@ public final class Processes {
             while(!process.waitFor(100,TimeUnit.MILLISECONDS)){if(System.nanoTime()>until||Files.size(out)>limit||Files.size(err)>limit){timeout=true;process.descendants().forEach(ProcessHandle::destroyForcibly);process.destroyForcibly();process.waitFor();break;}}
             if(Files.size(out)>limit||Files.size(err)>limit)throw new IOException("Process output limit exceeded");
             return new Result(timeout?-1:process.exitValue(),Files.readString(out),Files.readString(err),timeout);
-        }finally{if(process!=null&&process.isAlive())process.destroyForcibly();Files.deleteIfExists(out);Files.deleteIfExists(err);}
+        }finally{
+            if(process!=null){
+                if(process.isAlive()){process.descendants().forEach(ProcessHandle::destroyForcibly);process.destroyForcibly();process.waitFor(5,TimeUnit.SECONDS);}
+                process.getInputStream().close();process.getErrorStream().close();process.getOutputStream().close();
+            }
+            deleteOutput(out);deleteOutput(err);
+        }
+    }
+    // Windows can briefly retain redirected handles after waitFor reports exit.
+    // Retry the sharing violation; a lingering descendant must not mask the result.
+    static void deleteOutput(Path path)throws InterruptedException{
+        for(int attempt=0;attempt<20;attempt++)try{Files.deleteIfExists(path);return;}catch(IOException e){Thread.sleep(50);}
+        path.toFile().deleteOnExit();
     }
     public static List<String> git(Path root,String... args){var a=new ArrayList<>(List.of("git","--no-optional-locks","-c","core.hooksPath="+ (System.getProperty("os.name").startsWith("Windows")?"NUL":"/dev/null"),"-c","core.fsmonitor=false","-c","core.quotePath=false","-C",root.toAbsolutePath().toString()));a.addAll(List.of(args));return a;}
     public record Diff(String text,String revision,List<String> paths) {}
