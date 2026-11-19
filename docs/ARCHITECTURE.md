@@ -14,3 +14,10 @@ CIFuse source inspection/repair modules and DevRescue cloud accounts are not ven
 ## Reproducibility
 
 `forgescope/vendor/provenance.json` records every upstream SHA and copied path. `LICENSE` files are retained per component. Updating a component requires reviewing its API and license, refreshing provenance, then running integration fixtures and package tests. Never download engines dynamically at scan time.
+
+
+## Lexical references in 0.2.0
+
+`references.py` inventories bindings per module, function, class, lambda and comprehension. Conflicting bindings stop attribution; function bodies skip class namespaces when resolving free names. Qualified definition and caller names accompany syntactic call candidates. This does not infer object types or runtime dispatch. Local from-import names absent from a parsed module's binding inventory produce review leads, except when dynamic module exports or wildcard imports prevent that check. Runtime monkey-patching, decorators and import side effects remain outside this model.
+
+Git comparison reads a verified local commit, disables external diff/textconv and fsmonitor execution, and captures a bounded tracked working-tree diff plus a NUL-delimited path list. Those paths remain impact seeds even when Node is unavailable. SARIF normalizes derived findings, with no location when a source file is unavailable.

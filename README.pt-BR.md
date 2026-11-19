@@ -29,3 +29,18 @@ O scan não executa o código do alvo. A validação opcional de um patch execut
 Relatórios e histórico SQLite opcional ficam locais. A redação de segredos é incompleta: revise evidências e nomes de arquivos antes de compartilhar. A demo pública usa somente dados fictícios.
 
 Os commits e as licenças dos cinco projetos estão em [provenance.json](forgescope/vendor/provenance.json). Código MIT. Os projetos existentes permanecem independentes.
+
+
+## Novidades da versão 0.2.0
+
+- Chamadas candidatas respeitam escopos de funções, classes, parâmetros, lambdas e compreensões.
+- Imports de nomes ausentes em módulos locais geram evidências para revisão, com arquivo e linha. Exports dinâmicos e módulos externos não são declarados quebrados.
+- Alterações em `__init__.py` alcançam os submódulos do pacote.
+- `--base HEAD~1` captura mudanças rastreadas do Git, incluindo staged e unstaged. Arquivos novos não rastreados exigem `--changed`.
+- Todo relatório inclui SARIF 2.1.0. O painel também permite baixar SARIF e consultar chamadas qualificadas, referências e estados de comparação.
+
+```sh
+python -m forgescope /caminho/do/projeto --base HEAD~1 --output .forgescope
+```
+
+Esses resultados indicam onde investigar; não comprovam falha em execução nem causa raiz.

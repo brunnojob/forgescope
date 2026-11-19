@@ -15,6 +15,16 @@
 
 </div>
 
+## New in 0.2.0
+
+- **Lexically scoped call candidates:** imported aliases stay within their function/class scope; parameters, assignments, lambdas and comprehension targets prevent misleading call attribution.
+- **Local reference review:** imports of names absent from known module bindings become evidence-backed review leads. Dynamic module exports and external modules are not declared broken.
+- **Package initialization impact:** changing `__init__.py` reaches package submodules and their importers.
+- **Git baseline input:** `--base HEAD~1` compares a local commit to the tracked working tree, including staged changes. External diff/textconv drivers and fsmonitor hooks are disabled.
+- **SARIF 2.1.0:** every report includes `report.sarif`, also downloadable from the viewer. Findings without a source location omit it rather than inventing one.
+- **Inspect the evidence:** the viewer displays qualified call candidates, unresolved import leads and finding comparison states.
+
+
 Changing unfamiliar code means reconstructing dependencies, reviewing a patch, reading CI logs and finding missing maintenance work across separate tools. ForgeScope brings those evidence streams into one local investigation report, with a new Python import-impact analyzer at its center.
 
 It integrates the actual analysis engines from **PatchScope, CIFuse, RepoRelief and DevRescue**, plus the **RevScope tool catalog**. The report relates findings to changed and import-affected files. A shared file is evidence of a connection, not proof of a root cause.
@@ -27,6 +37,7 @@ The [interactive report](https://brunnojob.github.io/forgescope/) is generated f
 - `api.py` and `tests/test_orders.py` import `orders.py`.
 - The patch introduces dynamic evaluation and broad workflow permissions.
 - The log contains a missing-module failure at `orders.py`.
+- `legacy.py` imports `total_v1`, absent from the current pricing module. This is existing fixture evidence, not proof that the supplied diff caused it.
 - The report shows import chains, a test candidate, diff prompts, grouped log diagnostics and maintenance findings together.
 
 These are reproducible fixture results, not production measurements or promises that every affected file will break.
@@ -53,6 +64,9 @@ python -m forgescope /path/to/project --changed src/package/service.py
 # A supplied diff also seeds impact analysis from its file paths
 python -m forgescope /path/to/project --diff /path/to/change.diff --log /path/to/ci.log
 
+# Capture tracked working-tree changes relative to a local commit
+python -m forgescope /path/to/project --base HEAD~1
+
 # Narrow the starting file to a named definition; downstream impact remains file-level
 python -m forgescope /path/to/project --changed app.py --symbol handle_request
 
@@ -61,7 +75,7 @@ python -m forgescope /path/to/project --baseline previous/report.json \
   --history /path/to/history.sqlite --output next-report
 ```
 
-Each run writes `report.json`, `report.md` and a self-contained `index.html`. History is opt-in. No raw source inventory or full CI log is included in exports, but filenames and evidence snippets can still be sensitive. Inspect reports before sharing.
+Each run writes `report.json`, `report.md`, `report.sarif` and a self-contained `index.html`. History is opt-in. No raw source inventory or full CI log is included in exports, but filenames and evidence snippets can still be sensitive. Inspect reports before sharing.
 
 ## One investigation, six capabilities
 
@@ -75,6 +89,12 @@ Each run writes `report.json`, `report.md` and a self-contained `index.html`. Hi
 | Reverse engineering guidance | Vendored RevScope catalog with artifact-based suggestions | No decompiler, debugger, binary execution or firmware extraction |
 
 Vendored engines are pinned to the exact commits in [provenance.json](forgescope/vendor/provenance.json), with original MIT licenses preserved. Node is invoked through one JSON bridge. The normal scan does not run target code, repository configurations, suggested commands or tests. If Node is missing or an engine fails, its status is visible; the Python graph remains available. A missing diff is marked skipped.
+
+## Git comparison and code-scanning reports
+
+`--base` is mutually exclusive with `--diff`. It compares the selected local commit with tracked working-tree content, combining committed, staged and unstaged changes. It is not a merge-base comparison; untracked files require explicit `--changed` inputs. An unchanged working tree yields an empty diff, not an analysis error. Removed paths are retained as impact seeds. Git is required only for this mode and patch validation.
+
+`report.sarif` is a local SARIF 2.1.0 file. ForgeScope does not upload it or request code-scanning permissions. Upload it separately using the receiving platform's normal workflow and permissions if desired. Findings with unavailable source paths retain their message and fingerprint without fabricated line numbers.
 
 ## Validate a reviewed patch
 
@@ -91,7 +111,7 @@ Validation succeeds only when the before command fails and the after command pas
 ## Limits you can inspect
 
 - Python root and conventional `src/` layouts; absolute and relative imports, aliases and transitive file dependents. Multiple candidate module paths are marked ambiguous and not guessed.
-- Function selection filters starting files; import chains remain conservative at file level. Calls may be shadowed. No polymorphic dispatch, dynamic import resolution, cross-language call graph or external package graph.
+- Function selection filters starting files; import chains remain conservative at file level. Bindings are resolved lexically, with conflicting assignments treated conservatively. Runtime rebinding can still invalidate a candidate. No polymorphic dispatch, dynamic import resolution, cross-language call graph or external package graph.
 - Known deleted `.py` paths can seed existing importers; the deleted source body is unavailable.
 - Parse errors, dynamic sites and skipped files are visible. Inventory excludes symlinks, `.env` names and common generated directories, and caps scans at 10,000 text files / 20 MB / 512 KB per file. Logs: 20 files / 2 MB total. Diff: 2 MB, with PatchScope's own file/line limits.
 - Redaction is pattern based and incomplete. No security or quality percentage is invented. Finding comparison reports new/existing/absent evidence, not verified repair.

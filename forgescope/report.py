@@ -7,6 +7,7 @@ import subprocess
 from contextlib import closing
 from pathlib import Path
 from .impact import inventory, analyze
+from .sarif import to_sarif
 
 HERE = Path(__file__).parent
 
@@ -60,6 +61,10 @@ def make_report(root, changed=(), symbol=None, diff='', logs=()):
         findings.append({'id':hashlib.sha256(identity.encode()).hexdigest()[:20], 'engine':engine,
                          'rule':rule,'title':title,'priority':priority,'path':path,'line':line,
                          'evidence':redact(str(evidence)),'action':redact(str(action))})
+    for reference in impact['unresolved_references']:
+        add('impact','missing-local-export','Review an unresolved local import','medium',reference['path'],reference['line'],
+            reference['symbol']+' -> '+reference['target']+': '+reference['reason'],
+            'Check spelling, removed/renamed definitions, re-exports and runtime module initialization. This is a static review lead, not a proven ImportError.')
     for name, result in engines.items():
         if result['status'] != 'ok':
             continue
@@ -108,7 +113,9 @@ def make_report(root, changed=(), symbol=None, diff='', logs=()):
     return clean(report)
 
 def baseline(report, previous):
-    if previous.get('schema_version') != 1 or not isinstance(previous.get('findings'), list):
+    if (not isinstance(previous,dict) or previous.get('schema_version') != 1 or
+        not isinstance(previous.get('findings'),list) or
+        any(not isinstance(f,dict) or not isinstance(f.get('id'),str) for f in previous['findings'])):
         raise ValueError('Expected ForgeScope schema_version 1 baseline')
     old={f['id'] for f in previous['findings']}
     current={f['id'] for f in report['findings']}
@@ -135,6 +142,7 @@ def save(report, directory):
     data=json.dumps(report,indent=2,ensure_ascii=False)
     (out/'report.json').write_text(data,encoding='utf-8')
     (out/'report.md').write_text(markdown(report),encoding='utf-8')
+    (out/'report.sarif').write_text(json.dumps(to_sarif(report),indent=2,ensure_ascii=False),encoding='utf-8')
     template=(HERE/'viewer.html').read_text(encoding='utf-8')
     embedded=data.replace('<','\\u003c').replace('>','\\u003e').replace('&','\\u0026')
     (out/'index.html').write_text(template.replace('/*REPORT_DATA*/null',embedded),encoding='utf-8')

@@ -15,7 +15,7 @@ class ReportTests(unittest.TestCase):
     def test_real_engines_and_correlation(self):
         r=self.fixture()
         self.assertTrue(all(e['status']=='ok' for e in r['engines'].values()),r['engines'])
-        self.assertEqual({f['engine'] for f in r['findings']},{'cifuse','devrescue','patchscope','reporelief'})
+        self.assertEqual({f['engine'] for f in r['findings']},{'impact','cifuse','devrescue','patchscope','reporelief'})
         self.assertTrue(any(f['correlation'] and f['engine']=='devrescue' for f in r['findings']))
         self.assertIn('tests/test_orders.py',r['impact']['test_candidates'])
     def test_baseline_stable(self):

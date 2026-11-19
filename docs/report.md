@@ -2,7 +2,7 @@
 
 Project: sample
 
-5 Python modules · 5 affected files · 11 findings
+6 Python modules · 6 affected files · 12 findings
 
 ## Import-reachable test candidates
 
@@ -19,6 +19,11 @@ Use the minimum token permissions and keep untrusted code away from privileged e
 devrescue · src/shop/orders.py · medium
 ModuleNotFoundError: No module named &#x27;shop&#x27;
 python -m pip --version; Activate the project virtual environment, then install its declared requirements.
+
+### Review an unresolved local import
+impact · src/shop/legacy.py · medium
+shop.pricing.total_v1 -&gt; src/shop/pricing.py: Imported name is absent from the local module binding inventory.
+Check spelling, removed/renamed definitions, re-exports and runtime module initialization. This is a static review lead, not a proven ImportError.
 
 ### GitHub Actions behavior changed
 patchscope · .github/workflows/ci.yml · medium
@@ -62,7 +67,7 @@ Check the module name, declared dependencies, workspace install step and case-se
 
 ### Review modules without matching test names
 reporelief · src/shop/__init__.py · medium
-src/shop/__init__.py; src/shop/api.py; src/shop/orders.py; src/shop/pricing.py
+src/shop/__init__.py; src/shop/api.py; src/shop/legacy.py; src/shop/orders.py; src/shop/pricing.py
 Check existing integration coverage first; add behavior tests for uncovered boundaries and failure paths. Filename and directory matching is a heuristic, not coverage.
 
 ## Limits

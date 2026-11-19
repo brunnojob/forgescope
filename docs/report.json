@@ -2,12 +2,19 @@
   "schema_version": 1,
   "project": "sample",
   "inventory": {
-    "text_files": 6,
+    "text_files": 7,
     "skipped": []
   },
   "impact": {
-    "modules": 5,
+    "modules": 6,
     "edges": [
+      {
+        "source": "src/shop/api.py",
+        "target": "src/shop/__init__.py",
+        "line": 1,
+        "import": "shop",
+        "kind": "package-initialization"
+      },
       {
         "source": "src/shop/api.py",
         "target": "src/shop/orders.py",
@@ -16,11 +23,39 @@
         "kind": "import"
       },
       {
+        "source": "src/shop/legacy.py",
+        "target": "src/shop/__init__.py",
+        "line": 1,
+        "import": "shop",
+        "kind": "package-initialization"
+      },
+      {
+        "source": "src/shop/legacy.py",
+        "target": "src/shop/pricing.py",
+        "line": 1,
+        "import": "shop.pricing.total_v1",
+        "kind": "import"
+      },
+      {
+        "source": "src/shop/orders.py",
+        "target": "src/shop/__init__.py",
+        "line": 1,
+        "import": "shop",
+        "kind": "package-initialization"
+      },
+      {
         "source": "src/shop/orders.py",
         "target": "src/shop/pricing.py",
         "line": 1,
         "import": "shop.pricing.total",
         "kind": "import"
+      },
+      {
+        "source": "src/shop/pricing.py",
+        "target": "src/shop/__init__.py",
+        "line": 1,
+        "import": "shop",
+        "kind": "package-initialization"
       },
       {
         "source": "tests/test_orders.py",
@@ -36,6 +71,15 @@
         "target": "src/shop/orders.py",
         "line": 4,
         "symbol": "shop.orders.checkout",
+        "caller": "shop.api.submit",
+        "confidence": "syntactic-candidate"
+      },
+      {
+        "source": "src/shop/legacy.py",
+        "target": "src/shop/pricing.py",
+        "line": 4,
+        "symbol": "shop.pricing.total_v1",
+        "caller": "shop.legacy.legacy_checkout",
         "confidence": "syntactic-candidate"
       },
       {
@@ -43,13 +87,7 @@
         "target": "src/shop/pricing.py",
         "line": 4,
         "symbol": "shop.pricing.total",
-        "confidence": "syntactic-candidate"
-      },
-      {
-        "source": "tests/test_orders.py",
-        "target": "tests/test_orders.py",
-        "line": 6,
-        "symbol": "tests.test_orders.self.assertEqual",
+        "caller": "shop.orders.checkout",
         "confidence": "syntactic-candidate"
       },
       {
@@ -57,6 +95,7 @@
         "target": "src/shop/orders.py",
         "line": 6,
         "symbol": "shop.orders.checkout",
+        "caller": "tests.test_orders.OrderTest.test_total",
         "confidence": "syntactic-candidate"
       }
     ],
@@ -64,31 +103,49 @@
       {
         "path": "src/shop/api.py",
         "name": "submit",
+        "qualified_name": "shop.api.submit",
         "line": 3,
+        "end_line": 4,
+        "kind": "FunctionDef"
+      },
+      {
+        "path": "src/shop/legacy.py",
+        "name": "legacy_checkout",
+        "qualified_name": "shop.legacy.legacy_checkout",
+        "line": 3,
+        "end_line": 4,
         "kind": "FunctionDef"
       },
       {
         "path": "src/shop/orders.py",
         "name": "checkout",
+        "qualified_name": "shop.orders.checkout",
         "line": 3,
+        "end_line": 4,
         "kind": "FunctionDef"
       },
       {
         "path": "src/shop/pricing.py",
         "name": "total",
+        "qualified_name": "shop.pricing.total",
         "line": 1,
+        "end_line": 2,
         "kind": "FunctionDef"
       },
       {
         "path": "tests/test_orders.py",
         "name": "OrderTest",
+        "qualified_name": "tests.test_orders.OrderTest",
         "line": 4,
+        "end_line": 6,
         "kind": "ClassDef"
       },
       {
         "path": "tests/test_orders.py",
         "name": "test_total",
+        "qualified_name": "tests.test_orders.OrderTest.test_total",
         "line": 5,
+        "end_line": 6,
         "kind": "FunctionDef"
       }
     ],
@@ -107,6 +164,20 @@
         "path": "src/shop/pricing.py",
         "distance": 0,
         "chain": [],
+        "test": false
+      },
+      {
+        "path": "src/shop/legacy.py",
+        "distance": 1,
+        "chain": [
+          {
+            "source": "src/shop/legacy.py",
+            "target": "src/shop/pricing.py",
+            "line": 1,
+            "import": "shop.pricing.total_v1",
+            "kind": "import"
+          }
+        ],
         "test": false
       },
       {
@@ -171,7 +242,17 @@
     ],
     "dynamic_sites": [],
     "warnings": [],
-    "limits": "Import reachability and syntactic calls only. No runtime dispatch, coverage proof or guarantee of breakage. Calls may be shadowed; external imports and plugins are not resolved."
+    "unresolved_references": [
+      {
+        "path": "src/shop/legacy.py",
+        "line": 1,
+        "target": "src/shop/pricing.py",
+        "symbol": "shop.pricing.total_v1",
+        "confidence": "review-required",
+        "reason": "Imported name is absent from the local module binding inventory."
+      }
+    ],
+    "limits": "Import reachability and syntactic calls only. No runtime dispatch, coverage proof or guarantee of breakage. Lexical bindings are conservative; runtime rebinding, external imports and plugins are not resolved. Missing-name leads are not proof of ImportError."
   },
   "engines": {
     "patchscope": {
@@ -213,6 +294,21 @@
       "line": 1,
       "evidence": "ModuleNotFoundError: No module named 'shop'",
       "action": "python -m pip --version; Activate the project virtual environment, then install its declared requirements.",
+      "correlation": {
+        "relation": "same file in import impact set",
+        "distance": 1
+      }
+    },
+    {
+      "id": "73e6edcc7316c225f9ad",
+      "engine": "impact",
+      "rule": "missing-local-export",
+      "title": "Review an unresolved local import",
+      "priority": "medium",
+      "path": "src/shop/legacy.py",
+      "line": 1,
+      "evidence": "shop.pricing.total_v1 -> src/shop/pricing.py: Imported name is absent from the local module binding inventory.",
+      "action": "Check spelling, removed/renamed definitions, re-exports and runtime module initialization. This is a static review lead, not a proven ImportError.",
       "correlation": {
         "relation": "same file in import impact set",
         "distance": 1
@@ -324,14 +420,14 @@
       "correlation": null
     },
     {
-      "id": "ee41d3af5dd370a9c39f",
+      "id": "a98086336759b9337629",
       "engine": "reporelief",
       "rule": "tests.mapping",
       "title": "Review modules without matching test names",
       "priority": "medium",
       "path": "src/shop/__init__.py",
       "line": null,
-      "evidence": "src/shop/__init__.py; src/shop/api.py; src/shop/orders.py; src/shop/pricing.py",
+      "evidence": "src/shop/__init__.py; src/shop/api.py; src/shop/legacy.py; src/shop/orders.py; src/shop/pricing.py",
       "action": "Check existing integration coverage first; add behavior tests for uncovered boundaries and failure paths. Filename and directory matching is a heuristic, not coverage.",
       "correlation": null
     }

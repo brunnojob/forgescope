@@ -3,13 +3,16 @@ import json
 import sys
 from pathlib import Path
 from .report import make_report, save, bounded, baseline, record_history
+from .git import git_diff
 
 def main(argv=None):
     p=argparse.ArgumentParser(description='ForgeScope — evidence before edits. Local analysis; target code is never imported.')
     p.add_argument('repository', nargs='?', default='.')
     p.add_argument('--changed', action='append', default=[], help='Repository-relative file (repeatable; deleted files accepted)')
     p.add_argument('--symbol', help='Narrow changed-file seeds to a named definition; impact remains file-level')
-    p.add_argument('--diff', help='Existing unified diff file; never runs Git hooks')
+    source=p.add_mutually_exclusive_group()
+    source.add_argument('--diff', help='Existing unified diff file; never runs Git hooks')
+    source.add_argument('--base', help='Compare a local Git revision to tracked working-tree content, including staged changes; untracked files require --changed')
     p.add_argument('--log', action='append',default=[],help='Existing log file (repeatable)')
     p.add_argument('--baseline',help='Previous report.json for stable finding comparison')
     p.add_argument('--history',help='Opt-in local SQLite report history')
@@ -18,7 +21,14 @@ def main(argv=None):
     args=p.parse_args(argv)
     try:
         logs=[{'name':Path(x).name,'text':bounded(x)} for x in args.log]
-        report=make_report(args.repository,args.changed,args.symbol,bounded(args.diff) if args.diff else '',logs)
+        diff=bounded(args.diff) if args.diff else ''
+        changed=list(args.changed)
+        revision=None
+        if args.base:
+            diff,revision,git_changed=git_diff(args.repository,args.base)
+            changed.extend(git_changed)
+        report=make_report(args.repository,changed,args.symbol,diff,logs)
+        if revision:report['git']={'base_commit':revision,'comparison':'base-to-tracked-working-tree','untracked_included':False}
         if args.baseline: baseline(report,json.loads(bounded(args.baseline,20000000)))
         if args.history: record_history(report,args.history)
         out=save(report,args.output)
