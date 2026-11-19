@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "forgescope"
+version = "0.1.0"
+description = "Local Python impact analysis with integrated developer investigation engines"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+dependencies = []
+
+[project.scripts]
+forgescope = "forgescope.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["forgescope*"]
+
+[tool.setuptools.package-data]
+forgescope = ["bridge.mjs", "viewer.html", "vendor/**/*", "vendor/*"]

@@ -1,0 +1,396 @@
+{
+  "schema_version": 1,
+  "project": "sample",
+  "inventory": {
+    "text_files": 6,
+    "skipped": []
+  },
+  "impact": {
+    "modules": 5,
+    "edges": [
+      {
+        "source": "src/shop/api.py",
+        "target": "src/shop/orders.py",
+        "line": 1,
+        "import": "shop.orders.checkout",
+        "kind": "import"
+      },
+      {
+        "source": "src/shop/orders.py",
+        "target": "src/shop/pricing.py",
+        "line": 1,
+        "import": "shop.pricing.total",
+        "kind": "import"
+      },
+      {
+        "source": "tests/test_orders.py",
+        "target": "src/shop/orders.py",
+        "line": 2,
+        "import": "shop.orders.checkout",
+        "kind": "import"
+      }
+    ],
+    "calls": [
+      {
+        "source": "src/shop/api.py",
+        "target": "src/shop/orders.py",
+        "line": 4,
+        "symbol": "shop.orders.checkout",
+        "confidence": "syntactic-candidate"
+      },
+      {
+        "source": "src/shop/orders.py",
+        "target": "src/shop/pricing.py",
+        "line": 4,
+        "symbol": "shop.pricing.total",
+        "confidence": "syntactic-candidate"
+      },
+      {
+        "source": "tests/test_orders.py",
+        "target": "tests/test_orders.py",
+        "line": 6,
+        "symbol": "tests.test_orders.self.assertEqual",
+        "confidence": "syntactic-candidate"
+      },
+      {
+        "source": "tests/test_orders.py",
+        "target": "src/shop/orders.py",
+        "line": 6,
+        "symbol": "shop.orders.checkout",
+        "confidence": "syntactic-candidate"
+      }
+    ],
+    "symbols": [
+      {
+        "path": "src/shop/api.py",
+        "name": "submit",
+        "line": 3,
+        "kind": "FunctionDef"
+      },
+      {
+        "path": "src/shop/orders.py",
+        "name": "checkout",
+        "line": 3,
+        "kind": "FunctionDef"
+      },
+      {
+        "path": "src/shop/pricing.py",
+        "name": "total",
+        "line": 1,
+        "kind": "FunctionDef"
+      },
+      {
+        "path": "tests/test_orders.py",
+        "name": "OrderTest",
+        "line": 4,
+        "kind": "ClassDef"
+      },
+      {
+        "path": "tests/test_orders.py",
+        "name": "test_total",
+        "line": 5,
+        "kind": "FunctionDef"
+      }
+    ],
+    "changed": [
+      ".github/workflows/ci.yml",
+      "src/shop/pricing.py"
+    ],
+    "affected": [
+      {
+        "path": ".github/workflows/ci.yml",
+        "distance": 0,
+        "chain": [],
+        "test": false
+      },
+      {
+        "path": "src/shop/pricing.py",
+        "distance": 0,
+        "chain": [],
+        "test": false
+      },
+      {
+        "path": "src/shop/orders.py",
+        "distance": 1,
+        "chain": [
+          {
+            "source": "src/shop/orders.py",
+            "target": "src/shop/pricing.py",
+            "line": 1,
+            "import": "shop.pricing.total",
+            "kind": "import"
+          }
+        ],
+        "test": false
+      },
+      {
+        "path": "src/shop/api.py",
+        "distance": 2,
+        "chain": [
+          {
+            "source": "src/shop/orders.py",
+            "target": "src/shop/pricing.py",
+            "line": 1,
+            "import": "shop.pricing.total",
+            "kind": "import"
+          },
+          {
+            "source": "src/shop/api.py",
+            "target": "src/shop/orders.py",
+            "line": 1,
+            "import": "shop.orders.checkout",
+            "kind": "import"
+          }
+        ],
+        "test": false
+      },
+      {
+        "path": "tests/test_orders.py",
+        "distance": 2,
+        "chain": [
+          {
+            "source": "src/shop/orders.py",
+            "target": "src/shop/pricing.py",
+            "line": 1,
+            "import": "shop.pricing.total",
+            "kind": "import"
+          },
+          {
+            "source": "tests/test_orders.py",
+            "target": "src/shop/orders.py",
+            "line": 2,
+            "import": "shop.orders.checkout",
+            "kind": "import"
+          }
+        ],
+        "test": true
+      }
+    ],
+    "test_candidates": [
+      "tests/test_orders.py"
+    ],
+    "dynamic_sites": [],
+    "warnings": [],
+    "limits": "Import reachability and syntactic calls only. No runtime dispatch, coverage proof or guarantee of breakage. Calls may be shadowed; external imports and plugins are not resolved."
+  },
+  "engines": {
+    "patchscope": {
+      "status": "ok"
+    },
+    "reporelief": {
+      "status": "ok"
+    },
+    "cifuse": {
+      "status": "ok"
+    },
+    "devrescue": {
+      "status": "ok"
+    }
+  },
+  "findings": [
+    {
+      "id": "7479ebc86d10d22b33dd",
+      "engine": "patchscope",
+      "rule": "workflow-privilege",
+      "title": "Review this workflow privilege boundary",
+      "priority": "high",
+      "path": ".github/workflows/ci.yml",
+      "line": 1,
+      "evidence": "An added line uses broad write permissions or pull_request_target.",
+      "action": "Use the minimum token permissions and keep untrusted code away from privileged execution.",
+      "correlation": {
+        "relation": "same file in import impact set",
+        "distance": 0
+      }
+    },
+    {
+      "id": "3da36e6e7f1358dc002c",
+      "engine": "devrescue",
+      "rule": "python-module",
+      "title": "Python module is unavailable",
+      "priority": "medium",
+      "path": "src/shop/orders.py",
+      "line": 1,
+      "evidence": "ModuleNotFoundError: No module named 'shop'",
+      "action": "python -m pip --version; Activate the project virtual environment, then install its declared requirements.",
+      "correlation": {
+        "relation": "same file in import impact set",
+        "distance": 1
+      }
+    },
+    {
+      "id": "9415fe48281531c062ca",
+      "engine": "patchscope",
+      "rule": "workflow",
+      "title": "GitHub Actions behavior changed",
+      "priority": "medium",
+      "path": ".github/workflows/ci.yml",
+      "line": null,
+      "evidence": "Workflow changes can alter what executes and which credentials it receives.",
+      "action": "Review triggers, permissions, action pinning and handling of untrusted pull requests.",
+      "correlation": {
+        "relation": "same file in import impact set",
+        "distance": 0
+      }
+    },
+    {
+      "id": "cbcbc24b4bf503059d6e",
+      "engine": "patchscope",
+      "rule": "dynamic-code",
+      "title": "Dynamic code execution was added",
+      "priority": "medium",
+      "path": "src/shop/pricing.py",
+      "line": 2,
+      "evidence": "The added line calls eval or exec; context determines whether it is unsafe.",
+      "action": "Trace input provenance and prefer a parser or structured operation where possible.",
+      "correlation": {
+        "relation": "same file in import impact set",
+        "distance": 0
+      }
+    },
+    {
+      "id": "3c772722671247e07e1f",
+      "engine": "patchscope",
+      "rule": "test-coverage",
+      "title": "Confirm behavior is covered",
+      "priority": "info",
+      "path": "src/shop/pricing.py",
+      "line": null,
+      "evidence": "Source code changed, but this patch contains no changed test files. Existing tests may already cover it.",
+      "action": "Run the relevant suite and add a regression test when behavior changes.",
+      "correlation": {
+        "relation": "same file in import impact set",
+        "distance": 0
+      }
+    },
+    {
+      "id": "6ecdb79e0b5408217a49",
+      "engine": "reporelief",
+      "rule": "ci.missing",
+      "title": "Make checks repeatable",
+      "priority": "high",
+      "path": null,
+      "line": null,
+      "evidence": "No GitHub Actions workflow found",
+      "action": "Add CI that runs the actual project checks on pushes and pull requests.",
+      "correlation": null
+    },
+    {
+      "id": "0d0081c72f0919a96da8",
+      "engine": "reporelief",
+      "rule": "docs.link:README.md:5:docs/setup.md",
+      "title": "Repair a missing local Markdown target",
+      "priority": "medium",
+      "path": "README.md",
+      "line": null,
+      "evidence": "README.md:5: docs/setup.md -> docs/setup.md",
+      "action": "Restore the target or update the link relative to the source file directory. Only local path existence is checked.",
+      "correlation": null
+    },
+    {
+      "id": "412c93e3f91a284f2b1a",
+      "engine": "reporelief",
+      "rule": "docs.usage",
+      "title": "Document usage",
+      "priority": "medium",
+      "path": "README.md",
+      "line": null,
+      "evidence": "README.md",
+      "action": "Add a usage section with commands verified by a maintainer.",
+      "correlation": null
+    },
+    {
+      "id": "5095bfd0d160d388a98f",
+      "engine": "reporelief",
+      "rule": "license.missing",
+      "title": "Clarify reuse permissions",
+      "priority": "medium",
+      "path": null,
+      "line": null,
+      "evidence": "No root license file found",
+      "action": "Choose and add a license appropriate to the project.",
+      "correlation": null
+    },
+    {
+      "id": "697874f22dc7d03540b2",
+      "engine": "cifuse",
+      "rule": "missing-module",
+      "title": "Module could not be resolved",
+      "priority": "medium",
+      "path": null,
+      "line": null,
+      "evidence": "ModuleNotFoundError: No module named 'shop'",
+      "action": "Check the module name, declared dependencies, workspace install step and case-sensitive paths. Confirm the import exists on a clean checkout.",
+      "correlation": null
+    },
+    {
+      "id": "ee41d3af5dd370a9c39f",
+      "engine": "reporelief",
+      "rule": "tests.mapping",
+      "title": "Review modules without matching test names",
+      "priority": "medium",
+      "path": "src/shop/__init__.py",
+      "line": null,
+      "evidence": "src/shop/__init__.py; src/shop/api.py; src/shop/orders.py; src/shop/pricing.py",
+      "action": "Check existing integration coverage first; add behavior tests for uncovered boundaries and failure paths. Filename and directory matching is a heuristic, not coverage.",
+      "correlation": null
+    }
+  ],
+  "tools": [],
+  "provenance": [
+    {
+      "name": "patchscope",
+      "url": "https://github.com/brunnojob/patchscope",
+      "commit": "175d5c1bd978e2c678d889350667bffdfda28eae",
+      "files": [
+        "src/engine.js",
+        "src/config.js"
+      ],
+      "license": "MIT"
+    },
+    {
+      "name": "cifuse",
+      "url": "https://github.com/brunnojob/cifuse",
+      "commit": "6a38b949f2607b472327631c15b685dff4a6b7e3",
+      "files": [
+        "src/engine.js",
+        "src/rules.js"
+      ],
+      "license": "MIT"
+    },
+    {
+      "name": "reporelief",
+      "url": "https://github.com/brunnojob/reporelief",
+      "commit": "b76048f9ddaf99a67e62b8c144764c5c1d0c63b0",
+      "files": [
+        "src/analyze.js",
+        "src/markdown-links.js"
+      ],
+      "license": "MIT"
+    },
+    {
+      "name": "devrescue",
+      "url": "https://github.com/brunnojob/devrescue",
+      "commit": "beece0e6532e9cc7bbc86bbd46406632318d2e07",
+      "files": [
+        "src/engine.js"
+      ],
+      "license": "MIT"
+    },
+    {
+      "name": "revscope",
+      "url": "https://github.com/brunnojob/revscope",
+      "commit": "9f691aed0a4ef7571fb3accf010e985e73840dc4",
+      "files": [
+        "data/tools.json"
+      ],
+      "license": "MIT"
+    }
+  ],
+  "limitations": [
+    "Correlations are shared file evidence, not proof of root cause.",
+    "Test candidates are import-reachable, not measured coverage.",
+    "Redaction is best effort; inspect reports before sharing.",
+    "RevScope recommends tools only; no reverse-engineering engine is included."
+  ]
+}
