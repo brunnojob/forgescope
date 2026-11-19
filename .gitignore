@@ -5,3 +5,9 @@ __pycache__/
 build/
 dist/
 .forgescope/
+**/bin/
+**/obj/
+target/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

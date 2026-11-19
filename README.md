@@ -4,131 +4,122 @@
 
 ### Evidence before edits.
 
-**What could this change affect — and where should I investigate first?**
+**Java 21 core. C#/.NET 10 workbench and Roslyn analysis.**
 
-[Explore the example report](https://brunnojob.github.io/forgescope/) · [Português](README.pt-BR.md) · [Architecture](docs/ARCHITECTURE.md) · [Contribute](CONTRIBUTING.md)
+[Static example report](https://brunnojob.github.io/forgescope/) · [Português](README.pt-BR.md) · [Architecture](docs/ARCHITECTURE.md) · [Migration notes](docs/MIGRATION-0.3.md)
 
 [![CI](https://github.com/brunnojob/forgescope/actions/workflows/ci.yml/badge.svg)](https://github.com/brunnojob/forgescope/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/Python-3.11%2B-3776ab)
-![Node](https://img.shields.io/badge/integrated_engines-Node_22%2B-7fa95b)
-![License](https://img.shields.io/badge/license-MIT-a6efac)
+![Java](https://img.shields.io/badge/Java-21-ed8b00)
+![.NET](https://img.shields.io/badge/.NET-10-512bd4)
+![MIT](https://img.shields.io/badge/license-MIT-a5edb1)
 
 </div>
 
-## New in 0.2.0
+Changing unfamiliar code means reconstructing dependencies, reviewing patches, reading CI logs and finding maintenance work across separate tools. ForgeScope puts those evidence streams into one local investigation report.
 
-- **Lexically scoped call candidates:** imported aliases stay within their function/class scope; parameters, assignments, lambdas and comprehension targets prevent misleading call attribution.
-- **Local reference review:** imports of names absent from known module bindings become evidence-backed review leads. Dynamic module exports and external modules are not declared broken.
-- **Package initialization impact:** changing `__init__.py` reaches package submodules and their importers.
-- **Git baseline input:** `--base HEAD~1` compares a local commit to the tracked working tree, including staged changes. External diff/textconv drivers and fsmonitor hooks are disabled.
-- **SARIF 2.1.0:** every report includes `report.sarif`, also downloadable from the viewer. Findings without a source location omit it rather than inventing one.
-- **Inspect the evidence:** the viewer displays qualified call candidates, unresolved import leads and finding comparison states.
+**Version 0.3 migrates application logic to Java and C#. Python and Node are no longer runtime or build requirements.** HTML/CSS remain presentation formats. The portable report uses no JavaScript; the interactive localhost workbench runs its application logic in C# on ASP.NET Core.
 
+## What is implemented
 
-Changing unfamiliar code means reconstructing dependencies, reviewing a patch, reading CI logs and finding missing maintenance work across separate tools. ForgeScope brings those evidence streams into one local investigation report, with a new Python import-impact analyzer at its center.
+| Capability | Implementation | Boundary |
+| --- | --- | --- |
+| Java impact | JDK compiler AST and source symbol bindings, with annotation processing disabled | Isolated source compilation; not the target project's build graph |
+| C# impact | Roslyn syntax and semantic models in a .NET worker | No MSBuild evaluation, project analyzers or source generators |
+| Review prompts | Java ports of PatchScope rules | Heuristic diff review, not a security audit |
+| CI diagnostics | Java ports of CIFuse/DevRescue rules, plus Java, C#, MSBuild, .NET SDK and NuGet diagnostics | Pattern matches and source links, not proof of root cause |
+| Maintenance | Java implementation of repository essentials, relative Markdown targets, maintenance markers and conventional test naming | Heuristics; no measured test coverage |
+| Analysis guidance | RevScope catalog snapshot and artifact signals | No binary execution, decompiler or firmware extractor |
+| Reports and history | Java HTML/JSON/Markdown/SARIF exporters and optional SQLite JDBC history | Reports retain derived evidence; review them before sharing |
+| Local interface | C# ASP.NET Core, server-rendered filters, dependency paths, EN/PT, light/dark themes, exports and a local scan form | Binds only to 127.0.0.1; configured repository only; no cloud account |
 
-It integrates the actual analysis engines from **PatchScope, CIFuse, RepoRelief and DevRescue**, plus the **RevScope tool catalog**. The report relates findings to changed and import-affected files. A shared file is evidence of a connection, not proof of a root cause.
+An import/reference path shows potential impact. A shared file or missing symbol does not independently prove that a change caused a failure. External dependencies absent from the isolated compiler environment produce visible diagnostics rather than invented certainty.
 
-## See a complete example
+## Build and run
 
-The [interactive report](https://brunnojob.github.io/forgescope/) is generated from the [fictional shop fixture](examples/sample), [unified diff](examples/change.diff) and [CI log](examples/build.log).
-
-- `pricing.py` is imported by `orders.py`.
-- `api.py` and `tests/test_orders.py` import `orders.py`.
-- The patch introduces dynamic evaluation and broad workflow permissions.
-- The log contains a missing-module failure at `orders.py`.
-- `legacy.py` imports `total_v1`, absent from the current pricing module. This is existing fixture evidence, not proof that the supplied diff caused it.
-- The report shows import chains, a test candidate, diff prompts, grouped log diagnostics and maintenance findings together.
-
-These are reproducible fixture results, not production measurements or promises that every affected file will break.
-
-## Quick start
-
-Requires **Python 3.11+** and **Node.js 22+** for the bundled upstream engines. The Python core uses only the standard library. No npm install, model, account, token or cloud service is needed.
+Requires a **JDK 21** and **.NET 10 SDK**. Git is required for `--base` and patch validation. The JDK source launcher is sufficient; Maven is optional.
 
 ```sh
 git clone https://github.com/brunnojob/forgescope.git
 cd forgescope
-python -m forgescope examples/sample \
-  --changed src/shop/pricing.py \
-  --diff examples/change.diff --log examples/build.log \
-  --output .forgescope
+
+dotnet build dotnet/ForgeScope.Worker -c Release
+dotnet build dotnet/ForgeScope.Workbench -c Release
+
+# Optional SQLite dependencies: explicit download with pinned SHA-256 checks
+java tools/Dependencies.java
+java tools/Build.java test
 ```
 
-Open `.forgescope/index.html` directly. It works offline and includes a dependency map, engine/search filters, evidence details, light/dark themes, English/Portuguese interface controls and JSON download. Engine evidence retains the original upstream wording and language.
+The .NET worker references Roslyn shipped with the SDK. No third-party NuGet packages are needed. The explicit Java dependency step downloads SQLite JDBC and SLF4J from Maven Central into `build/lib`; a normal scan never downloads anything. The Java compiler and report features work without those JARs; `--history` requires them.
+
+Generate the reproducible Java/C# fixture report:
 
 ```sh
-# Inspect your own repository without executing its code
-python -m forgescope /path/to/project --changed src/package/service.py
-
-# A supplied diff also seeds impact analysis from its file paths
-python -m forgescope /path/to/project --diff /path/to/change.diff --log /path/to/ci.log
-
-# Capture tracked working-tree changes relative to a local commit
-python -m forgescope /path/to/project --base HEAD~1
-
-# Narrow the starting file to a named definition; downstream impact remains file-level
-python -m forgescope /path/to/project --changed app.py --symbol handle_request
-
-# Compare stable finding identities; optionally save sanitized derived reports locally
-python -m forgescope /path/to/project --baseline previous/report.json \
-  --history /path/to/history.sqlite --output next-report
+java -jar build/forgescope.jar examples/sample --changed java/src/shop/Pricing.java --changed csharp/Pricing.cs --diff examples/change.diff --log examples/build.log --csharp-worker dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll --output .forgescope --fail-on engine-error
 ```
 
-Each run writes `report.json`, `report.md`, `report.sarif` and a self-contained `index.html`. History is opt-in. No raw source inventory or full CI log is included in exports, but filenames and evidence snippets can still be sensitive. Inspect reports before sharing.
+Open `.forgescope/index.html` directly for a portable, offline report. For the full local interface:
 
-## One investigation, six capabilities
+```sh
+dotnet dotnet/ForgeScope.Workbench/bin/Release/net10.0/ForgeScope.Workbench.dll --report .forgescope/report.json --repo examples/sample --jar build/forgescope.jar --worker dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll
+```
 
-| Capability | Implementation | Boundary |
-| --- | --- | --- |
-| Python impact | New AST import graph, direct syntactic call candidates, reverse reachability and source lines | Not runtime dispatch, measured coverage or exact function-level impact |
-| Diff review | Vendored PatchScope engine | Heuristic review prompts, not a security audit |
-| CI grouping | Vendored CIFuse engine | Pattern matches and investigation hints, not automatic root cause proof |
-| Troubleshooting | Vendored DevRescue root engine | Evidence, available source locations and suggested steps; no commands executed |
-| Repository upkeep | Vendored RepoRelief engine | Documentation, links, filename-based test signals, CI/license checks |
-| Reverse engineering guidance | Vendored RevScope catalog with artifact-based suggestions | No decompiler, debugger, binary execution or firmware extraction |
+Visit **http://127.0.0.1:8765**. Use the GET form to filter findings, select a source file, choose English/Portuguese or switch theme. The POST scan form uses a random nonce, checks browser origins and invokes the Java CLI with explicit arguments, without a shell. It can scan only the repository configured at startup. Omit `--repo` and `--jar` for read-only report viewing. To scan the non-Git fixture, clear the Git base field and provide one of its source paths.
 
-Vendored engines are pinned to the exact commits in [provenance.json](forgescope/vendor/provenance.json), with original MIT licenses preserved. Node is invoked through one JSON bridge. The normal scan does not run target code, repository configurations, suggested commands or tests. If Node is missing or an engine fails, its status is visible; the Python graph remains available. A missing diff is marked skipped.
+GitHub Pages hosts only the static fixture report. It cannot run Java, ASP.NET Core, Roslyn or SQLite. All interactive scans happen locally.
 
-## Git comparison and code-scanning reports
+### Your repository
 
-`--base` is mutually exclusive with `--diff`. It compares the selected local commit with tracked working-tree content, combining committed, staged and unstaged changes. It is not a merge-base comparison; untracked files require explicit `--changed` inputs. An unchanged working tree yields an empty diff, not an analysis error. Removed paths are retained as impact seeds. Git is required only for this mode and patch validation.
+```sh
+java -jar build/forgescope.jar /path/to/project --base HEAD~1 --csharp-worker dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll --output .forgescope
+java -jar build/forgescope.jar /path/to/project --changed src/shop/Pricing.java --symbol shop.Pricing.total --output .forgescope
+java -jar build/forgescope.jar /path/to/project --baseline previous/report.json --history history.sqlite --output next-report
+```
 
-`report.sarif` is a local SARIF 2.1.0 file. ForgeScope does not upload it or request code-scanning permissions. Upload it separately using the receiving platform's normal workflow and permissions if desired. Findings with unavailable source paths retain their message and fingerprint without fabricated line numbers.
+`--base` compares a local commit to tracked working-tree content, including staged changes, relative to the selected directory. It is not a merge-base comparison. Untracked files require `--changed`. External diff/textconv drivers and fsmonitor hooks are disabled. `--diff` accepts a supplied unified patch and is mutually exclusive with `--base`.
+
+Each run writes `report.json`, `report.md`, `report.sarif` and `index.html`. `--fail-on high` returns 1 for high-priority findings; `--fail-on engine-error` returns 2 when a required analyzer fails or is unavailable. C# files without an explicit worker are reported as unavailable. Python files use limited lexical import compatibility and are labeled accordingly.
+
+### Optional Maven build
+
+```sh
+mvn package
+java -jar target/forgescope-0.3.0.jar /path/to/project --history history.sqlite
+```
+
+Maven runs the Java regression checks and produces a shaded JAR with SQLite dependencies. The source-launcher build and CI also verify Java-to-Roslyn integration. No Maven invocation is required when using `tools/Build.java`.
 
 ## Validate a reviewed patch
 
-Use a clean, committed **trusted** Git repository. This separate command intentionally executes the explicit test command before and after applying your supplied patch in a disposable detached worktree:
+Use a clean, committed **trusted** Git repository. This separate command intentionally executes your explicit test argv before/after applying a supplied patch in a disposable detached worktree:
 
 ```sh
-python -m forgescope.validation /path/to/trusted/project /path/to/reviewed.patch \
-  --test-command '["python","-m","unittest","discover","-s","tests"]' \
-  --output validation.json
+java -jar build/forgescope.jar validate /path/to/trusted/project /path/to/reviewed.patch --test-command '["dotnet","test","--no-restore"]' --output validation.json
 ```
 
-Validation succeeds only when the before command fails and the after command passes. Build artifacts are removed from the temporary checkout between runs. The original checkout is preserved. This isolates edits, **not execution privileges**: trusted tests can access the machine and network, and subprocesses they launch may outlive a timeout. No arbitrary command from a log is run, no patch is automatically generated, and no PR is automatically opened. A passing selected test command does not establish full correctness.
+Success requires failing tests before and passing tests after. The original checkout is preserved. The temporary checkout is cleaned between runs. This isolates edits, **not execution privileges**: tests can access files and networks, and process-tree termination is best effort. No log-derived commands, generated repairs or automatic PR publication are used.
 
-## Limits you can inspect
+## Honest migration boundaries
 
-- Python root and conventional `src/` layouts; absolute and relative imports, aliases and transitive file dependents. Multiple candidate module paths are marked ambiguous and not guessed.
-- Function selection filters starting files; import chains remain conservative at file level. Bindings are resolved lexically, with conflicting assignments treated conservatively. Runtime rebinding can still invalidate a candidate. No polymorphic dispatch, dynamic import resolution, cross-language call graph or external package graph.
-- Known deleted `.py` paths can seed existing importers; the deleted source body is unavailable.
-- Parse errors, dynamic sites and skipped files are visible. Inventory excludes symlinks, `.env` names and common generated directories, and caps scans at 10,000 text files / 20 MB / 512 KB per file. Logs: 20 files / 2 MB total. Diff: 2 MB, with PatchScope's own file/line limits.
-- Redaction is pattern based and incomplete. No security or quality percentage is invented. Finding comparison reports new/existing/absent evidence, not verified repair.
-- No cloud accounts, Azure database migration or hosted report synchronization is transplanted from DevRescue. Existing projects remain independent.
+- Java and C# analysis now resolves symbols through their compiler APIs. Runtime dispatch, reflection, external project references and generated code remain incomplete.
+- The former Python AST implementation is preserved in Git history. Version 0.3 offers import-only lexical Python compatibility; it does not claim equivalent Python function/scope analysis. See [migration notes](docs/MIGRATION-0.3.md).
+- Ports preserve the investigation workflow, not every upstream implementation detail or byte-identical output. Rule wording and fingerprints can differ across the 0.2/0.3 boundary.
+- SQLite retains the existing `runs` table schema. Existing history is not replaced, migrated or deleted. Old JSON reports remain readable by the local workbench.
+- Inventory skips symlinks, `.env` names, common generated directories, binary/invalid UTF-8 and files over 512 KB; text scans are capped at 10,000 files / 20 MB. Logs: 20 files / 2 MB total. Patches: 2 MB / 500 sections / 60,000 lines.
+- Redaction is pattern based and incomplete. Reports can contain sensitive filenames and evidence snippets. No quality, security or accuracy percentage is invented.
 
-## Development
+## Verify
 
 ```sh
-python -m unittest discover -s tests -v
-python -m forgescope examples/sample --diff examples/change.diff \
-  --log examples/build.log --output docs --fail-on engine-error
+dotnet dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll --self-test
+dotnet dotnet/ForgeScope.Workbench/bin/Release/net10.0/ForgeScope.Workbench.dll --self-test
+java tools/Build.java test
 ```
 
-CI tests Python 3.11/3.13 on Linux and Windows, builds an installable wheel, verifies packaged engine data, and regenerates the fixture report. Pages publishes only the fictional example. Do not substitute private source or logs into that public demo workflow.
+To include cross-runtime protocol checks in the Java test process, set `FORGESCOPE_CSHARP_WORKER` to the built worker DLL. CI does this on Windows and Linux, with JDK 21, .NET 10 and SQLite dependencies. The CI artifacts contain the Java JAR, JDBC libraries, C# worker/workbench outputs and derived reports.
 
 ## Credits
 
-Built on [PatchScope](https://github.com/brunnojob/patchscope), [CIFuse](https://github.com/brunnojob/cifuse), [RepoRelief](https://github.com/brunnojob/reporelief), [DevRescue](https://github.com/brunnojob/devrescue) and [RevScope](https://github.com/brunnojob/revscope), maintained by Brunno. Original engine files and catalog are preserved with their own licenses. New orchestration, Python analysis and viewer: MIT.
+Original project references and pinned commits are in [provenance.json](src/main/resources/provenance.json). Original MIT notices are retained in [third_party/licenses](third_party/licenses); dependency notices are in [third_party/README.md](third_party/README.md). PatchScope, CIFuse, RepoRelief, DevRescue and RevScope remain independent repositories.
 
 God first. Build useful things, and make the evidence inspectable.

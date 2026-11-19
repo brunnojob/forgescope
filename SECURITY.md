@@ -1,7 +1,11 @@
 # Security
 
-Normal scans do not import or execute the target project. They run bundled Node analysis code and parse repository text. Symlinks and `.env` filenames are skipped; this is not a complete secrets exclusion policy. Reports contain filenames and evidence snippets. Redaction is incomplete: inspect every report before publishing it.
+Normal scans parse/analyze source but do not execute it. Java uses an isolated compiler classpath with annotation processors disabled. Roslyn runs against framework metadata without project MSBuild, analyzers or source generators. Only an explicitly supplied worker DLL is launched. Use the trusted worker from this repository.
 
-Patch validation is opt-in and executes user-selected commands in a temporary checkout. It is not a process, network or filesystem sandbox. Use only trusted projects and commands. Subprocess descendants may outlive a timeout. No cloud upload or account integration is implemented.
+The ASP.NET Core workbench binds only to 127.0.0.1. It checks Host, validates Origin and a random nonce for scan POSTs, fixes the scan repository at startup, and passes arguments without a shell. It is not intended to be exposed on a network or placed behind a public proxy.
 
-Do not publish exploitable vulnerability details or secrets in public issues. Use the repository's private vulnerability reporting facility when available; otherwise contact the maintainer through their public GitHub profile to arrange disclosure without attaching secrets.
+Patch validation intentionally executes explicit user-supplied commands on trusted projects. Temporary worktrees isolate edits, not machine/network privileges. Process-tree termination is best effort. No log-derived commands are run.
+
+Inventory skips symlinks, common generated directories and `.env` names. This is not a complete secrets policy. Reports contain filenames, compiler diagnostics and evidence. Pattern-based redaction is incomplete; review all exports before sharing. No automatic uploads or cloud account features are included.
+
+Use GitHub private vulnerability reporting when available. Do not attach secrets to public issues.

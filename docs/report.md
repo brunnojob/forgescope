@@ -1,78 +1,171 @@
 # ForgeScope investigation
 
-Project: sample
+Java 21 + .NET 10 · sample
 
-6 Python modules · 6 affected files · 12 findings
+## Review this workflow privilege boundary
 
-## Import-reachable test candidates
+patchscope · .github/workflows/ci.yml:1
 
-- tests/test_orders.py
+Broad permissions or pull_request_target added
 
-## Evidence and actions
+Check token scope and whether untrusted code can run.
 
-### Review this workflow privilege boundary
-patchscope · .github/workflows/ci.yml · high
-An added line uses broad write permissions or pull_request_target.
-Use the minimum token permissions and keep untrusted code away from privileged execution.
+## Dynamic code or process execution was added
 
-### Python module is unavailable
-devrescue · src/shop/orders.py · medium
-ModuleNotFoundError: No module named &#x27;shop&#x27;
-python -m pip --version; Activate the project virtual environment, then install its declared requirements.
+patchscope · java/src/shop/Pricing.java:3
 
-### Review an unresolved local import
-impact · src/shop/legacy.py · medium
-shop.pricing.total_v1 -&gt; src/shop/pricing.py: Imported name is absent from the local module binding inventory.
-Check spelling, removed/renamed definitions, re-exports and runtime module initialization. This is a static review lead, not a proven ImportError.
+Execution boundary changed
 
-### GitHub Actions behavior changed
-patchscope · .github/workflows/ci.yml · medium
-Workflow changes can alter what executes and which credentials it receives.
-Review triggers, permissions, action pinning and handling of untrusted pull requests.
+Trace the input, argument boundaries and trust assumptions.
 
-### Dynamic code execution was added
-patchscope · src/shop/pricing.py · medium
-The added line calls eval or exec; context determines whether it is unsafe.
-Trace input provenance and prefer a parser or structured operation where possible.
+## Dynamic code or process execution was added
 
-### Confirm behavior is covered
-patchscope · src/shop/pricing.py · info
-Source code changed, but this patch contains no changed test files. Existing tests may already cover it.
-Run the relevant suite and add a regression test when behavior changes.
+patchscope · csharp/Pricing.cs:4
 
-### Make checks repeatable
-reporelief · no verified source location · high
-No GitHub Actions workflow found
-Add CI that runs the actual project checks on pushes and pull requests.
+Execution boundary changed
 
-### Repair a missing local Markdown target
-reporelief · README.md · medium
-README.md:5: docs/setup.md -&gt; docs/setup.md
-Restore the target or update the link relative to the source file directory. Only local path existence is checked.
+Trace the input, argument boundaries and trust assumptions.
 
-### Document usage
-reporelief · README.md · medium
-README.md
-Add a usage section with commands verified by a maintainer.
+## GitHub Actions behavior changed
 
-### Clarify reuse permissions
-reporelief · no verified source location · medium
+patchscope · .github/workflows/ci.yml:
+
+Workflow file changed
+
+Review triggers, permissions and action pinning.
+
+## Confirm behavior is covered
+
+patchscope · java/src/shop/Pricing.java:
+
+Source changed without changed test files in this patch
+
+Check existing tests or add a regression case. This does not measure coverage.
+
+## Confirm behavior is covered
+
+patchscope · csharp/Pricing.cs:
+
+Source changed without changed test files in this patch
+
+Check existing tests or add a regression case. This does not measure coverage.
+
+## Review a module without a matching test name
+
+reporelief · csharp/Legacy.cs:
+
+No conventional test filename match
+
+Find existing coverage or add a behavior test; this is not measured coverage.
+
+## Review a module without a matching test name
+
+reporelief · csharp/Pricing.cs:
+
+No conventional test filename match
+
+Find existing coverage or add a behavior test; this is not measured coverage.
+
+## Review a module without a matching test name
+
+reporelief · java/src/shop/Api.java:
+
+No conventional test filename match
+
+Find existing coverage or add a behavior test; this is not measured coverage.
+
+## Review a module without a matching test name
+
+reporelief · java/src/shop/Legacy.java:
+
+No conventional test filename match
+
+Find existing coverage or add a behavior test; this is not measured coverage.
+
+## Review a module without a matching test name
+
+reporelief · java/src/shop/Pricing.java:
+
+No conventional test filename match
+
+Find existing coverage or add a behavior test; this is not measured coverage.
+
+## Java compilation failed
+
+cifuse · java/src/shop/Legacy.java:4
+
+java/src/shop/Legacy.java:4: error: cannot find symbol
+
+Use the file and line diagnostics. Check package paths, declarations and the JDK/toolchain configured in Maven or Gradle.
+
+## C# or MSBuild diagnostic
+
+cifuse · csharp/Legacy.cs:5
+
+csharp/Legacy.cs(5,43): error CS0117: &#39;Pricing&#39; does not contain a definition for &#39;TotalV1&#39;
+
+Inspect the compiler diagnostic, target framework and references. Reproduce using the same .NET SDK as CI.
+
+## Java compilation failed
+
+devrescue · java/src/shop/Legacy.java:4
+
+java/src/shop/Legacy.java:4: error: cannot find symbol
+
+Use the file and line diagnostics. Check package paths, declarations and the JDK/toolchain configured in Maven or Gradle.
+
+## C# or MSBuild diagnostic
+
+devrescue · csharp/Legacy.cs:5
+
+csharp/Legacy.cs(5,43): error CS0117: &#39;Pricing&#39; does not contain a definition for &#39;TotalV1&#39;
+
+Inspect the compiler diagnostic, target framework and references. Reproduce using the same .NET SDK as CI.
+
+## Review an unresolved local reference
+
+impact · java/src/shop/Legacy.java:4
+
+Pricing.totalV1: Invocation did not resolve against a supplied local source type; missing dependencies can affect binding.
+
+Inspect the declaration, signature, imports and missing dependency diagnostics. This is not a proof of root cause.
+
+## Review an unresolved local reference
+
+impact · csharp/Legacy.cs:5
+
+Pricing.TotalV1: Call did not resolve against a supplied local C# type. Review overloads, signatures and missing references.
+
+Inspect the declaration, signature, imports and missing dependency diagnostics. This is not a proof of root cause.
+
+## Make checks repeatable
+
+reporelief · :
+
+No GitHub workflow found
+
+Add a workflow for the real test/build commands.
+
+## Document usage
+
+reporelief · README.md:
+
+Section keywords not found
+
+Add commands verified by a maintainer; keyword matching is heuristic.
+
+## Clarify reuse permissions
+
+reporelief · :
+
 No root license file found
-Choose and add a license appropriate to the project.
 
-### Module could not be resolved
-cifuse · no verified source location · medium
-ModuleNotFoundError: No module named &#x27;shop&#x27;
-Check the module name, declared dependencies, workspace install step and case-sensitive paths. Confirm the import exists on a clean checkout.
+Choose and document an appropriate license.
 
-### Review modules without matching test names
-reporelief · src/shop/__init__.py · medium
-src/shop/__init__.py; src/shop/api.py; src/shop/legacy.py; src/shop/orders.py; src/shop/pricing.py
-Check existing integration coverage first; add behavior tests for uncovered boundaries and failure paths. Filename and directory matching is a heuristic, not coverage.
+## Repair a missing local Markdown target
 
-## Limits
+reporelief · README.md:5
 
-- Correlations are shared file evidence, not proof of root cause.
-- Test candidates are import-reachable, not measured coverage.
-- Redaction is best effort; inspect reports before sharing.
-- RevScope recommends tools only; no reverse-engineering engine is included.
+docs/setup.md -&gt; docs/setup.md
+
+Restore the target or correct the relative link.

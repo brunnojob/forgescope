@@ -1,5 +1,9 @@
 # Contributing
 
-Start with a reproducible input and a documented analysis boundary. Add regression cases for false positives, ambiguous imports, missing source, cycles, redaction and malformed input. Never execute target code during a scan or quietly convert advisory evidence into a correctness claim.
+Active application logic is Java 21 and C#/.NET 10. Keep source examples, package boundaries and compiler diagnostics reproducible. Do not reintroduce a Python/Node subprocess or custom browser-side business logic.
 
-Run `python -m unittest discover -s tests -v` with Node 22+ available. Keep vendored engines unchanged unless updating from a reviewed upstream commit; retain licenses and provenance. Avoid adding credentials, personal logs or real proprietary source to examples.
+Run the worker/workbench self-tests, `java tools/Dependencies.java`, and `java tools/Build.java test`. Set `FORGESCOPE_CSHARP_WORKER` to the built worker DLL for cross-runtime tests. CI checks both Windows and Linux.
+
+Normal scans must not execute target builds, annotation processors, analyzers, source generators or code. Add negative cases for shadowing, invalid syntax, external references, ambiguous locations, malformed JSON, redaction and path traversal. Keep limits visible. Do not turn heuristic evidence into a correctness or security claim.
+
+Preserve original project licenses and rule provenance when changing ports. Never commit private repositories, actual credentials or proprietary logs into the public examples.

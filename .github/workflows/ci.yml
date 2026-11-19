@@ -5,22 +5,42 @@ permissions:
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python: ['3.11', '3.13']
     runs-on: ${{ matrix.os }}
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      FORGESCOPE_CSHARP_WORKER: dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python }}
-      - uses: actions/setup-node@v4
+          persist-credentials: false
+      - uses: actions/setup-java@v4
         with:
-          node-version: '22'
-      - run: python -m unittest discover -s tests -v
-      - run: python -m forgescope examples/sample --diff examples/change.diff --log examples/build.log --output .forgescope --fail-on engine-error
-      - run: python -m pip wheel . --no-deps --wheel-dir dist
-      - run: python -m pip install --no-deps --force-reinstall .
-      - name: Verify installed package outside source tree
-        working-directory: ${{ runner.temp }}
-        run: python -c "from forgescope.report import HERE; assert (HERE/'vendor/patchscope/engine.js').is_file(); assert (HERE/'viewer.html').is_file(); print(HERE)"
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet build dotnet/ForgeScope.Worker -c Release --nologo
+      - run: dotnet build dotnet/ForgeScope.Workbench -c Release --nologo
+      - run: dotnet dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll --self-test
+      - run: dotnet dotnet/ForgeScope.Workbench/bin/Release/net10.0/ForgeScope.Workbench.dll --self-test
+      - run: java tools/Dependencies.java
+      - run: java tools/Build.java test
+      - run: java -jar build/forgescope.jar examples/sample --changed java/src/shop/Pricing.java --changed csharp/Pricing.cs --diff examples/change.diff --log examples/build.log --csharp-worker dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll --history build/ci-history.sqlite --output .forgescope --fail-on engine-error
+      - run: dotnet run --project dotnet/ForgeScope.Smoke -c Release -- dotnet/ForgeScope.Workbench/bin/Release/net10.0/ForgeScope.Workbench.dll .forgescope/report.json build/forgescope.jar dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll
+      - name: Verify optional Maven distribution
+        if: runner.os == 'Linux'
+        run: mvn -B package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forgescope-java-dotnet-${{ matrix.os }}
+          path: |
+            build/forgescope.jar
+            build/lib/
+            dotnet/ForgeScope.Worker/bin/Release/net10.0/
+            dotnet/ForgeScope.Workbench/bin/Release/net10.0/
+            .forgescope/report.json
+            .forgescope/report.sarif

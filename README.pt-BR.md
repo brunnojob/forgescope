@@ -1,46 +1,45 @@
 # ForgeScope
 
-**Entenda o impacto da mudança e investigue com evidências.**
+**Núcleo Java 21. Painel e análise C# em .NET 10.**
 
-[Demo interativa](https://brunnojob.github.io/forgescope/) · [Documentação completa em inglês](README.md)
+[Relatório de exemplo](https://brunnojob.github.io/forgescope/) · [Documentação completa](README.md) · [Migração](docs/MIGRATION-0.3.md)
 
-Revisar um projeto desconhecido exige entender dependências, ler diffs, investigar logs e localizar manutenção pendente em várias ferramentas. O ForgeScope reúne essas etapas em um relatório local.
+O ForgeScope reúne análise de impacto, revisão de diffs, diagnóstico de CI e manutenção em um relatório local. A versão 0.3 substitui a implementação Python/Node por Java e C#. Python e Node não são necessários para compilar ou executar o sistema.
 
-O núcleo Python analisa imports com AST, mostra dependências diretas e indiretas, candidatos a chamadas e testes alcançáveis pelo grafo. Os motores originais do PatchScope, CIFuse, RepoRelief e DevRescue contribuem com evidências; o catálogo RevScope orienta a escolha de ferramentas para artefatos compatíveis.
+## Componentes
+
+- **Java:** análise com o compilador do JDK, regras de PatchScope/CIFuse/DevRescue/RepoRelief portadas, Git, relatórios HTML/JSON/Markdown/SARIF, histórico SQLite e validação de patches.
+- **C#/.NET:** worker Roslyn para resolver símbolos C# e painel ASP.NET Core com filtros, seleção de arquivo, PT/EN, temas e análise local.
+- **HTML/CSS:** apresentação. O relatório portátil não contém JavaScript; o painel interativo executa sua lógica no servidor C# local.
 
 ## Executar
 
-Requisitos: Python 3.11+ e Node.js 22+ para os motores integrados. Nenhuma dependência Python externa, instalação npm, conta ou chave de API.
+Requisitos: JDK 21 e SDK .NET 10. Git é necessário para comparação de revisões e validação de patches.
 
 ```sh
-git clone https://github.com/brunnojob/forgescope.git
-cd forgescope
-python -m forgescope examples/sample --changed src/shop/pricing.py --diff examples/change.diff --log examples/build.log --output .forgescope
+dotnet build dotnet/ForgeScope.Worker -c Release
+dotnet build dotnet/ForgeScope.Workbench -c Release
+java tools/Dependencies.java
+java tools/Build.java test
+java -jar build/forgescope.jar examples/sample --changed java/src/shop/Pricing.java --changed csharp/Pricing.cs --diff examples/change.diff --log examples/build.log --csharp-worker dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll --output .forgescope
 ```
 
-Abra `.forgescope/index.html`. O relatório inclui mapa de imports, filtros, evidências, exportação JSON e tema claro/escuro. A interface tem controles PT/EN; as evidências mantêm o texto original dos motores.
+O passo Dependencies é opcional para análise, mas necessário para `--history`. Baixa SQLite JDBC e SLF4J com hashes fixos. O scan não faz downloads.
 
-## Limites
-
-A análise de imports indica impacto potencial, não prova quebra ou cobertura de testes. Não resolve despacho dinâmico nem chamadas entre linguagens. A revisão do diff e dos logs é heurística. A correlação usa arquivos em comum; não comprova causa raiz. O RevScope recomenda ferramentas, sem descompilar ou executar binários.
-
-O scan não executa o código do alvo. A validação opcional de um patch executa somente o comando de testes explicitamente informado, em um worktree temporário de um repositório confiável. Isso preserva o checkout original, mas não é uma sandbox de segurança. Nenhuma correção ou PR é gerado automaticamente.
-
-Relatórios e histórico SQLite opcional ficam locais. A redação de segredos é incompleta: revise evidências e nomes de arquivos antes de compartilhar. A demo pública usa somente dados fictícios.
-
-Os commits e as licenças dos cinco projetos estão em [provenance.json](forgescope/vendor/provenance.json). Código MIT. Os projetos existentes permanecem independentes.
-
-
-## Novidades da versão 0.2.0
-
-- Chamadas candidatas respeitam escopos de funções, classes, parâmetros, lambdas e compreensões.
-- Imports de nomes ausentes em módulos locais geram evidências para revisão, com arquivo e linha. Exports dinâmicos e módulos externos não são declarados quebrados.
-- Alterações em `__init__.py` alcançam os submódulos do pacote.
-- `--base HEAD~1` captura mudanças rastreadas do Git, incluindo staged e unstaged. Arquivos novos não rastreados exigem `--changed`.
-- Todo relatório inclui SARIF 2.1.0. O painel também permite baixar SARIF e consultar chamadas qualificadas, referências e estados de comparação.
+Abra `.forgescope/index.html` para o relatório portátil. Para o painel completo:
 
 ```sh
-python -m forgescope /caminho/do/projeto --base HEAD~1 --output .forgescope
+dotnet dotnet/ForgeScope.Workbench/bin/Release/net10.0/ForgeScope.Workbench.dll --report .forgescope/report.json --repo examples/sample --jar build/forgescope.jar --worker dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll
 ```
 
-Esses resultados indicam onde investigar; não comprovam falha em execução nem causa raiz.
+Acesse **http://127.0.0.1:8765**. O painel só escuta no endereço local, usa nonce para novas análises e não executa comandos vindos de logs. Sem `--repo` e `--jar`, funciona como visualizador somente leitura.
+
+## Limites importantes
+
+A análise Java/C# usa os compiladores em um ambiente isolado: não executa o código alvo, annotation processors, MSBuild, analyzers do projeto ou geradores. Referências externas ausentes aparecem como diagnósticos. Evidências e caminhos não comprovam causa raiz nem cobertura de testes.
+
+A compatibilidade com arquivos Python passou a ser leitura léxica de imports; a análise Python AST da versão anterior permanece no histórico Git. Os motores de revisão são portas Java e podem produzir textos/identidades diferentes dos anteriores. O histórico SQLite mantém o esquema existente.
+
+GitHub Pages mostra um relatório estático fictício. O painel .NET e as análises reais rodam em localhost. O catálogo RevScope indica ferramentas, sem executar engenharia reversa.
+
+Código MIT, com créditos e licenças originais preservados.

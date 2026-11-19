@@ -1,5 +1,4 @@
-Traceback (most recent call last):
-  File "src/shop/orders.py", line 1, in <module>
-    from shop.pricing import total
-ModuleNotFoundError: No module named 'shop'
-ModuleNotFoundError: No module named 'shop'
+java/src/shop/Legacy.java:4: error: cannot find symbol
+  symbol: method totalV1(int,int)
+csharp/Legacy.cs(5,43): error CS0117: 'Pricing' does not contain a definition for 'TotalV1'
+csharp/Legacy.cs(5,43): error CS0117: 'Pricing' does not contain a definition for 'TotalV1'
