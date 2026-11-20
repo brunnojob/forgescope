@@ -1,5 +1,9 @@
 # ForgeScope
 
+[![ForgeScope illustrated animated walkthrough](assets/forgescope-walkthrough.gif)](https://brunnojob.github.io/forgescope/)
+
+*Demonstração animada ilustrativa das seis etapas do relatório.*
+
 **Núcleo Java 21. Painel e análise C# em .NET 10.**
 
 [Relatório de exemplo](https://brunnojob.github.io/forgescope/) · [Documentação completa](README.md) · [Migração](docs/MIGRATION-0.3.md)
@@ -11,6 +15,21 @@ O ForgeScope reúne análise de impacto, revisão de diffs, diagnóstico de CI e
 - **Java:** análise com o compilador do JDK, regras de PatchScope/CIFuse/DevRescue/RepoRelief portadas, Git, relatórios HTML/JSON/Markdown/SARIF, histórico SQLite e validação de patches.
 - **C#/.NET:** worker Roslyn para resolver símbolos C# e painel ASP.NET Core com filtros, seleção de arquivo, PT/EN, temas e análise local.
 - **HTML/CSS:** apresentação. O relatório portátil não contém JavaScript; o painel interativo executa sua lógica no servidor C# local.
+
+## Início rápido
+
+Instale **JDK 21**, **SDK .NET 10** e **Git**, depois copie os comandos no terminal:
+
+```sh
+git clone https://github.com/brunnojob/forgescope.git
+cd forgescope
+dotnet build dotnet/ForgeScope.Worker -c Release
+dotnet build dotnet/ForgeScope.Workbench -c Release
+java tools/Build.java
+java -jar build/forgescope.jar examples/sample --changed java/src/shop/Pricing.java --changed csharp/Pricing.cs --diff examples/change.diff --log examples/build.log --csharp-worker dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll --output .forgescope
+```
+
+Abra **`.forgescope/pt-br.html`** para conferir o relatório gerado localmente. Siga o [tutorial passo a passo](https://brunnojob.github.io/forgescope/pt-br.html#how-it-works) ou clique em **Iniciar demonstração** no Pages. O Pages não executa análises reais.
 
 ## Executar
 

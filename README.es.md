@@ -1,5 +1,9 @@
 # ForgeScope
 
+[![ForgeScope illustrated animated walkthrough](assets/forgescope-walkthrough.gif)](https://brunnojob.github.io/forgescope/)
+
+*Demostración animada ilustrativa de las seis etapas del informe.*
+
 **Evidencias antes de editar. Java 21 + C#/.NET 10.**
 
 [English](README.md) · [Português](README.pt-BR.md) · [Demostración en español](https://brunnojob.github.io/forgescope/es.html)
@@ -11,6 +15,21 @@ ForgeScope reúne análisis de impacto de código, revisión de parches, diagnó
 Abre la demostración y pulsa **Iniciar demostración**. El recorrido de seis pasos presenta el resumen, las dependencias, las pruebas sugeridas, los analizadores, las referencias y las evidencias. Puedes avanzar, retroceder, cerrar o finalizar. Los enlaces de idioma conservan el paso actual.
 
 La interfaz completa está disponible en español, inglés y portugués de Brasil, incluidos los títulos de hallazgos, las acciones sugeridas, los estados y las limitaciones. Las rutas, los nombres de métodos y las evidencias originales de registros y compiladores se conservan para no alterar su significado. La URL identifica el idioma; también funciona sin conexión.
+
+## Inicio rápido
+
+Instala **JDK 21**, **SDK .NET 10** y **Git**, y copia estos comandos en la terminal:
+
+```sh
+git clone https://github.com/brunnojob/forgescope.git
+cd forgescope
+dotnet build dotnet/ForgeScope.Worker -c Release
+dotnet build dotnet/ForgeScope.Workbench -c Release
+java tools/Build.java
+java -jar build/forgescope.jar examples/sample --changed java/src/shop/Pricing.java --changed csharp/Pricing.cs --diff examples/change.diff --log examples/build.log --csharp-worker dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll --output .forgescope
+```
+
+Abre **`.forgescope/es.html`** para consultar el informe generado localmente. Usa el [tutorial paso a paso](https://brunnojob.github.io/forgescope/es.html#how-it-works) o **Iniciar demostración** en Pages. Pages no ejecuta análisis reales.
 
 ## Compilar y ejecutar
 

@@ -1,12 +1,16 @@
 <div align="center">
 
-# ForgeScope - All tools in unic place
+# ForgeScope
 
-### Evidence before edits. Will change logs for real RLS alerts.
+[![ForgeScope illustrated animated walkthrough](assets/forgescope-walkthrough.gif)](https://brunnojob.github.io/forgescope/)
+
+<sub>Illustrated six-stage walkthrough of the sample report. Not a live screen recording.</sub>
+
+### Evidence before edits. Code impact, CI diagnostics and actionable evidence in one local workbench.
 
 **Java 21 core. C#/.NET 10 workbench and Roslyn analysis.**
 
-[Static example report](https://brunnojob.github.io/forgescope/) · [Português](README.pt-BR.md) · [Español](README.es.md) · [Architecture](docs/ARCHITECTURE.md) · [Migration notes](docs/MIGRATION-0.3.md)
+[Interactive sample and tutorial](https://brunnojob.github.io/forgescope/#how-it-works) · [Português](README.pt-BR.md) · [Español](README.es.md) · [Architecture](docs/ARCHITECTURE.md) · [Migration notes](docs/MIGRATION-0.3.md)
 
 [![CI](https://github.com/brunnojob/forgescope/actions/workflows/ci.yml/badge.svg)](https://github.com/brunnojob/forgescope/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-21-ed8b00)
@@ -33,6 +37,21 @@ Changing unfamiliar code means reconstructing dependencies, reviewing patches, r
 | Local interface | C# ASP.NET Core, server-rendered filters, dependency paths, EN/PT-BR/ES, light/dark themes, exports and a local scan form | Binds only to 127.0.0.1; configured repository only; no cloud account |
 
 An import/reference path shows potential impact. A shared file or missing symbol does not independently prove that a change caused a failure. External dependencies absent from the isolated compiler environment produce visible diagnostics rather than invented certainty.
+
+## Quick start
+
+Install **JDK 21**, **.NET 10 SDK** and **Git**, then copy these commands into a terminal:
+
+```sh
+git clone https://github.com/brunnojob/forgescope.git
+cd forgescope
+dotnet build dotnet/ForgeScope.Worker -c Release
+dotnet build dotnet/ForgeScope.Workbench -c Release
+java tools/Build.java
+java -jar build/forgescope.jar examples/sample --changed java/src/shop/Pricing.java --changed csharp/Pricing.cs --diff examples/change.diff --log examples/build.log --csharp-worker dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll --output .forgescope
+```
+
+Open **`.forgescope/index.html`** in your browser to inspect the real locally generated sample report. For explanations, use the [step-by-step tutorial](https://brunnojob.github.io/forgescope/#how-it-works) or the existing six-stage **Start demonstration** tour. GitHub Pages shows sample evidence and does not run a live scan.
 
 ## Build and run
 
