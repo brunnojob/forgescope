@@ -912,28 +912,28 @@
     "es": "Ejecuta la prueba indicada de forma aislada. Inspecciona la diferencia de la aserción y los cambios recientes."
   },
   "Disassemble, decompile, and analyze compiled code with a collaborative desktop workbench.": {
-    "pt-BR": "Desmonte, descompile e analise código compilado em um ambiente colaborativo.",
-    "es": "Desensambla, descompila y analiza código compilado en un entorno colaborativo."
+    "pt-BR": "Desmonte, descompile e analise código compilado em um ambiente desktop colaborativo.",
+    "es": "Desensambla y descompila código compilado con un entorno de análisis colaborativo."
   },
   "Identify executable formats, compilers, packers, and related file properties.": {
-    "pt-BR": "Identifique formatos executáveis, compiladores, empacotadores e propriedades dos arquivos.",
-    "es": "Identifica formatos ejecutables, compiladores, empaquetadores y propiedades de archivos."
+    "pt-BR": "Identifique formatos de executáveis, compiladores, empacotadores e outras propriedades dos arquivos.",
+    "es": "Identifica formatos ejecutables, compiladores, empaquetadores y propiedades."
   },
   "Search firmware images for embedded filesystems, signatures, and other structures.": {
-    "pt-BR": "Procure sistemas de arquivos, assinaturas e outras estruturas em imagens de firmware.",
-    "es": "Busca sistemas de archivos, firmas y otras estructuras en imágenes de firmware."
+    "pt-BR": "Busque sistemas de arquivos embarcados, assinaturas e outras estruturas em imagens de firmware.",
+    "es": "Busca sistemas de archivos y firmas dentro de imágenes de firmware."
   },
   "Emulate machines and run isolated test environments across many architectures.": {
-    "pt-BR": "Emule máquinas e execute ambientes de teste isolados em várias arquiteturas.",
-    "es": "Emula máquinas y ejecuta entornos de prueba aislados en varias arquitecturas."
+    "pt-BR": "Emule máquinas e execute ambientes de teste isolados em diversas arquiteturas.",
+    "es": "Emula máquinas y ejecuta entornos de prueba aislados."
   },
   "Capture and inspect network protocols in traffic you are authorized to analyze.": {
-    "pt-BR": "Capture e inspecione protocolos em tráfego que você tem autorização para analisar.",
-    "es": "Captura e inspecciona protocolos en tráfico que tienes autorización para analizar."
+    "pt-BR": "Capture e inspecione protocolos de rede em tráfego que você tem autorização para analisar.",
+    "es": "Captura e inspecciona protocolos de red en tráfico autorizado."
   },
   "Inspect, modify, and replay HTTP(S) traffic in your own test setup.": {
-    "pt-BR": "Inspecione, altere e reproduza tráfego HTTP(S) no seu ambiente de testes.",
-    "es": "Inspecciona, modifica y reproduce tráfico HTTP(S) en tu entorno de pruebas."
+    "pt-BR": "Inspecione, modifique e reproduza tráfego HTTP(S) em seu próprio ambiente de teste.",
+    "es": "Inspecciona y reproduce tráfico HTTP(S) en un entorno propio de pruebas."
   },
   "Review a branch- or tag-pinned action": {
     "pt-BR": "Revise uma Action fixada por branch ou tag",
@@ -1006,5 +1006,233 @@
   "unverified": {
     "pt-BR": "Não verificado",
     "es": "Sin verificar"
+  },
+  "Static analysis of native binaries": {
+    "pt-BR": "Análise estática de binários nativos",
+    "es": "Análisis estático de binarios nativos"
+  },
+  "Interactive disassembler with broad processor coverage and a familiar analysis workflow.": {
+    "pt-BR": "Desmontador interativo com suporte a diversas arquiteturas de processador e um fluxo de análise familiar.",
+    "es": "Desensamblador interactivo con soporte amplio de procesadores."
+  },
+  "Inspecting supported binary formats": {
+    "pt-BR": "Inspeção dos formatos binários compatíveis",
+    "es": "Inspección de formatos binarios compatibles"
+  },
+  "Accessible reverse-engineering GUI built around the Rizin framework.": {
+    "pt-BR": "Interface gráfica acessível para engenharia reversa, baseada no framework Rizin.",
+    "es": "Interfaz gráfica de ingeniería inversa construida con Rizin."
+  },
+  "A graphical entry point to Rizin": {
+    "pt-BR": "Um ponto de partida gráfico para o Rizin",
+    "es": "Un punto de partida visual para Rizin"
+  },
+  "Portable command-line framework for binary analysis, debugging, and data inspection.": {
+    "pt-BR": "Framework portátil de linha de comando para análise de binários, depuração e inspeção de dados.",
+    "es": "Framework portátil de línea de comandos para analizar y depurar binarios."
+  },
+  "Scriptable binary workflows": {
+    "pt-BR": "Fluxos de análise de binários automatizados por scripts",
+    "es": "Flujos programables de análisis binario"
+  },
+  "Open-source debugger for Windows applications and executables.": {
+    "pt-BR": "Depurador de código aberto para aplicativos e executáveis do Windows.",
+    "es": "Depurador de código abierto para programas y ejecutables de Windows."
+  },
+  "Runtime debugging on Windows": {
+    "pt-BR": "Depuração em tempo de execução no Windows",
+    "es": "Depuración durante la ejecución en Windows"
+  },
+  "First-pass executable triage": {
+    "pt-BR": "Triagem inicial de executáveis",
+    "es": "Clasificación inicial de ejecutables"
+  },
+  "Identify capabilities in executable files, shellcode, and sandbox reports.": {
+    "pt-BR": "Identifique funcionalidades em executáveis, shellcode e relatórios de sandbox.",
+    "es": "Identifica capacidades en ejecutables y en informes de entornos aislados."
+  },
+  "A fast behavior-oriented first look": {
+    "pt-BR": "Uma primeira avaliação rápida orientada ao comportamento",
+    "es": "Primera investigación basada en capacidades"
+  },
+  "Extract strings that are statically or stack-decoded from malware samples.": {
+    "pt-BR": "Extraia strings estáticas ou decodificadas na pilha de amostras de malware.",
+    "es": "Extrae cadenas estáticas y decodificadas de muestras de malware."
+  },
+  "Finding obfuscated strings during triage": {
+    "pt-BR": "Encontrar strings ofuscadas durante a triagem",
+    "es": "Identificación de cadenas ofuscadas"
+  },
+  "Describe and match patterns in files using readable, shareable rules.": {
+    "pt-BR": "Descreva e encontre padrões em arquivos usando regras legíveis e compartilháveis.",
+    "es": "Detecta patrones de archivos con reglas legibles y compartibles."
+  },
+  "Creating repeatable file detection rules": {
+    "pt-BR": "Criar regras reproduzíveis de detecção em arquivos",
+    "es": "Reglas reproducibles de detección de archivos"
+  },
+  "Instrument applications at runtime with a programmable toolkit for developers and researchers.": {
+    "pt-BR": "Instrumente aplicativos em tempo de execução com um conjunto programável de ferramentas para desenvolvedores e pesquisadores.",
+    "es": "Instrumenta aplicaciones durante su ejecución mediante herramientas programables."
+  },
+  "Observing runtime behavior in a test environment": {
+    "pt-BR": "Observar o comportamento em execução em um ambiente de teste",
+    "es": "Observación del comportamiento en un laboratorio"
+  },
+  "Read Java-like source and resources recovered from Android DEX and APK files.": {
+    "pt-BR": "Leia código semelhante a Java e recursos recuperados de arquivos Android DEX e APK.",
+    "es": "Recupera recursos y código semejante a Java desde DEX y APK."
+  },
+  "Static inspection of Android packages": {
+    "pt-BR": "Inspeção estática de pacotes Android",
+    "es": "Inspección estática de paquetes Android"
+  },
+  "Decode Android resources and rebuild packages for analysis and development workflows.": {
+    "pt-BR": "Decodifique recursos Android e reconstrua pacotes para análise e desenvolvimento.",
+    "es": "Decodifica recursos y reconstruye paquetes Android para investigación."
+  },
+  "Inspecting resources and manifests": {
+    "pt-BR": "Inspeção de recursos e manifestos",
+    "es": "Inspección de recursos y manifiestos"
+  },
+  "Automate mobile application security checks and organize static or dynamic analysis findings.": {
+    "pt-BR": "Automatize verificações de segurança de aplicativos móveis e organize os resultados de análises estáticas ou dinâmicas.",
+    "es": "Automatiza revisiones de seguridad móvil y reúne hallazgos."
+  },
+  "A repeatable mobile app assessment workflow": {
+    "pt-BR": "Um fluxo reproduzível de avaliação de aplicativos móveis",
+    "es": "Evaluación repetible de aplicaciones móviles"
+  },
+  "Open-source .NET assembly browser and decompiler with a desktop interface.": {
+    "pt-BR": "Navegador e descompilador de assemblies .NET de código aberto com interface desktop.",
+    "es": "Explorador y descompilador de ensamblados .NET de código abierto."
+  },
+  "Exploring managed .NET assemblies": {
+    "pt-BR": "Explorar assemblies .NET gerenciados",
+    "es": "Exploración de ensamblados .NET administrados"
+  },
+  "Community-maintained .NET debugger and assembly editor derived from dnSpy.": {
+    "pt-BR": "Depurador e editor de assemblies .NET mantido pela comunidade e derivado do dnSpy.",
+    "es": "Depurador y editor comunitario de ensamblados .NET basado en dnSpy."
+  },
+  "Debugging managed .NET applications": {
+    "pt-BR": "Depuração de aplicativos .NET gerenciados",
+    "es": "Depuración de aplicaciones .NET administradas"
+  },
+  "Understanding protocol behavior in a lab": {
+    "pt-BR": "Entender o comportamento de protocolos em laboratório",
+    "es": "Entender protocolos de red en un laboratorio"
+  },
+  "Debugging API and web traffic": {
+    "pt-BR": "Depuração de tráfego de APIs e aplicações web",
+    "es": "Depuración de API y tráfico web"
+  },
+  "A manual toolkit for testing web applications that you own or have permission to assess.": {
+    "pt-BR": "Um conjunto de ferramentas manuais para testar aplicações web próprias ou com autorização para avaliação.",
+    "es": "Herramientas manuales para evaluar aplicaciones web autorizadas."
+  },
+  "Hands-on web security testing": {
+    "pt-BR": "Testes práticos de segurança web",
+    "es": "Pruebas prácticas de seguridad web"
+  },
+  "Initial inspection of firmware images": {
+    "pt-BR": "Inspeção inicial de imagens de firmware",
+    "es": "Inspección inicial de imágenes de firmware"
+  },
+  "Debug and program microcontrollers through supported on-chip debug adapters.": {
+    "pt-BR": "Depure e programe microcontroladores por meio de adaptadores de depuração compatíveis.",
+    "es": "Depura microcontroladores mediante adaptadores de depuración compatibles."
+  },
+  "Hardware you own or are authorized to service": {
+    "pt-BR": "Hardware próprio ou com autorização para manutenção",
+    "es": "Hardware propio o autorizado"
+  },
+  "Safe, repeatable analysis labs": {
+    "pt-BR": "Laboratórios de análise seguros e reproduzíveis",
+    "es": "Laboratorios de análisis seguros y repetibles"
+  },
+  "Capture Android app traffic without root, inspect HTTP requests, and export PCAP files. HTTPS inspection requires extra TLS setup and app compatibility.": {
+    "pt-BR": "Capture o tráfego de aplicativos Android sem root, inspecione requisições HTTP e exporte arquivos PCAP. A inspeção HTTPS exige configuração TLS adicional e compatibilidade do aplicativo.",
+    "es": "Captura tráfico de apps Android sin root, inspecciona HTTP y exporta PCAP. HTTPS exige una configuración TLS adicional."
+  },
+  "Per-app Android traffic analysis and PCAP export": {
+    "pt-BR": "Análise de tráfego por aplicativo Android e exportação PCAP",
+    "es": "Tráfico por aplicación Android y exportación PCAP"
+  },
+  "Disassembly & decompilation": {
+    "pt-BR": "Desmontagem e descompilação",
+    "es": "Desensamblado y descompilación"
+  },
+  "Debugging": {
+    "pt-BR": "Depuração",
+    "es": "Depuración"
+  },
+  "Triage & identification": {
+    "pt-BR": "Triagem e identificação",
+    "es": "Clasificación e identificación"
+  },
+  "Detection & rules": {
+    "pt-BR": "Detecção e regras",
+    "es": "Detección y reglas"
+  },
+  "Dynamic instrumentation": {
+    "pt-BR": "Instrumentação dinâmica",
+    "es": "Instrumentación dinámica"
+  },
+  "Android & mobile": {
+    "pt-BR": "Android e dispositivos móveis",
+    "es": "Android y dispositivos móviles"
+  },
+  ".NET & managed code": {
+    "pt-BR": ".NET e código gerenciado",
+    "es": ".NET y código administrado"
+  },
+  "Network & protocols": {
+    "pt-BR": "Redes e protocolos",
+    "es": "Redes y protocolos"
+  },
+  "Firmware & embedded": {
+    "pt-BR": "Firmware e embarcados",
+    "es": "Firmware y sistemas integrados"
+  },
+  "Emulation & lab": {
+    "pt-BR": "Emulação e laboratório",
+    "es": "Emulación y laboratorio"
+  },
+  "Best for": {
+    "pt-BR": "Ideal para",
+    "es": "Ideal para"
+  },
+  "Platform": {
+    "pt-BR": "Plataforma",
+    "es": "Plataforma"
+  },
+  "Level": {
+    "pt-BR": "Dificuldade",
+    "es": "Dificultad"
+  },
+  "Beginner": {
+    "pt-BR": "Iniciante",
+    "es": "Principiante"
+  },
+  "Intermediate": {
+    "pt-BR": "Intermediário",
+    "es": "Intermedio"
+  },
+  "Advanced": {
+    "pt-BR": "Avançado",
+    "es": "Avanzado"
+  },
+  "Free": {
+    "pt-BR": "Gratuito",
+    "es": "Gratis"
+  },
+  "Free tier": {
+    "pt-BR": "Plano gratuito",
+    "es": "Plan gratuito"
+  },
+  "Free tier · paid extras": {
+    "pt-BR": "Plano gratuito · extras pagos",
+    "es": "Plan gratuito · extras de pago"
   }
 }

@@ -33,7 +33,7 @@ ForgeScope runs a **local Java/.NET investigation** and presents its evidence in
 | [CIFuse](https://github.com/brunnojob/cifuse) | CI-log grouping with redacted context and source locations, plus bounded JS/TS relative-import checks | Not the full CIFuse repair/PR workflow; no automatic fix claims |
 | [RepoRelief](https://github.com/brunnojob/reporelief) | README, license, workflow, broken-link, TODO/FIXME and conventional test-name audit | Heuristic maintenance checks, not measured coverage |
 | Java/Roslyn impact | Java AST / Roslyn source dependency paths and test candidates | No target build graph, generated-code evaluation or runtime proof |
-| [RevScope](https://github.com/brunnojob/revscope) | File-extension and header triage for captures, binaries, Android packages and embedded artifacts, with recommendations from the pinned tool catalog | No packet decoding, decompilation, firmware emulation or binary execution |
+| [RevScope](https://github.com/brunnojob/revscope) | File-header triage and a browsable **22-tool** offline catalog with localized descriptions | No packet decoding, decompilation, firmware emulation or binary execution |
 
 To run an investigation on your own checkout, use the [Quick start](#quick-start). The published Pages report uses the synthetic **Java/C# + CI/diff + empty PCAP header** fixture; this allows visitors to verify the steps without uploading code. Outputs are HTML, JSON, SARIF and Markdown. Inspect reports before sharing because paths and original evidence may remain sensitive.
 

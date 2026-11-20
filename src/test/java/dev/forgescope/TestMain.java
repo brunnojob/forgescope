@@ -62,7 +62,7 @@ public final class TestMain {
             check(localized.contains("<html lang=\""+lang+"\""),"Report language "+lang);
             for(int step=1;step<=6;step++)check(localized.contains("id=\"tour-"+step+"\""),"Tour target "+lang+" / "+step);
             check(localized.contains("href=\"pt-br.html\"")&&localized.contains("href=\"es.html\""),"Offline language links "+lang);
-            check(!localized.contains("<script"),"Native tour without JS "+lang);check(localized.contains("id=\"pipeline-1\""),"Real-evidence pipeline exists "+lang);check(localized.contains("id=\"pipeline-6\""),"Pipeline export stage exists "+lang);
+            check(!localized.contains("<script"),"Native tour without JS "+lang);check(localized.contains("id=\"pipeline-1\""),"Real-evidence pipeline exists "+lang);check(localized.contains("id=\"pipeline-6\""),"Pipeline export stage exists "+lang);check(localized.contains("id=\"revscope-catalog\""),"Full RevScope catalog section exists "+lang);check(localized.contains("Wireshark")&&localized.contains("PCAPdroid"),"Full catalog rendered "+lang);
         }
         check(I18n.text("unknown custom plugin output","pt-BR").equals("unknown custom plugin output"),"Missing translation must not crash report");check(!I18n.text("Review a case-sensitive import path","pt-BR").equals("Review a case-sensitive import path"),"Source import translations present");
         check(I18n.language("pt").equals("pt-BR")&&I18n.language("bad\"><img").equals("en"),"Language aliases and input whitelist");
