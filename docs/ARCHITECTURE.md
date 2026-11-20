@@ -21,3 +21,7 @@ The Java source launcher compiles/package classes with JDK tools; Maven is optio
 `src/main/resources/i18n.json` is the shared PT-BR/ES catalog; English is the stable source wording. Java emits `index.html`, `pt-br.html` and `es.html` with translated UI, generated explanations and a six-step anchor tour. Native CSS `:target` opens the active step and highlights its section; no browser script or third-party tour service is used. URLs preserve the selected language and tour step. Reduced-motion preferences disable the transition.
 
 The C# workbench embeds the same catalog and styles. Its GET form selects all three languages, filters localized titles/actions as well as raw evidence, and POST scans preserve language/theme. Paths, symbols, raw log excerpts and compiler diagnostics remain original evidence. Exported JSON/SARIF remain stable machine formats. New rules must add both translations before release.
+
+## Evidence-backed Pages demonstration
+
+The report renderer now builds a six-stage, JavaScript-free tour from the actual report object. It displays the diff findings (PatchScope), CI and source-import findings (CIFuse), repository health (RepoRelief), Java/Roslyn source paths, RevScope file-header signals and export links. The fixture includes an empty PCAP header, explicitly labeled as a sample; no packet contents are analyzed. Each translated tour uses the same unmodified source evidence. This is not upstream engine feature parity; see README boundaries.
