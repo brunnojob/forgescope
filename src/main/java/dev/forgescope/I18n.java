@@ -14,8 +14,8 @@ public final class I18n {
     public static String text(Object value,String language) {
         String source=str(value),lang=language(language);
         if(lang.equals("en"))return source;
-        var row=obj(CATALOG.get(source));
-        if(row.containsKey(lang))return str(row.get(lang));
+        Object stored=CATALOG.get(source);
+        if(stored instanceof Map<?,?> row && row.containsKey(lang))return str(row.get(lang));
         if(source.matches("\\d+ lines"))return source.replace("lines",lang.equals("es")?"líneas":"linhas");
         return source;
     }

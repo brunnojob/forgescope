@@ -64,6 +64,7 @@ public final class TestMain {
             check(localized.contains("href=\"pt-br.html\"")&&localized.contains("href=\"es.html\""),"Offline language links "+lang);
             check(!localized.contains("<script"),"Native tour without JS "+lang);check(localized.contains("id=\"pipeline-1\""),"Real-evidence pipeline exists "+lang);check(localized.contains("id=\"pipeline-6\""),"Pipeline export stage exists "+lang);
         }
+        check(I18n.text("unknown custom plugin output","pt-BR").equals("unknown custom plugin output"),"Missing translation must not crash report");check(!I18n.text("Review a case-sensitive import path","pt-BR").equals("Review a case-sensitive import path"),"Source import translations present");
         check(I18n.language("pt").equals("pt-BR")&&I18n.language("bad\"><img").equals("en"),"Language aliases and input whitelist");
         for(Object engine:obj(Report.resource("log-rules.json")).values())for(Object value:arr(engine))for(String field:List.of("title","action")){
             String original=str(obj(value).get(field));check(!I18n.text(original,"pt-BR").equals(original)&&!I18n.text(original,"es").equals(original),"Log catalog translated: "+field);

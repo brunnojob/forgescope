@@ -934,5 +934,77 @@
   "Inspect, modify, and replay HTTP(S) traffic in your own test setup.": {
     "pt-BR": "Inspecione, altere e reproduza tráfego HTTP(S) no seu ambiente de testes.",
     "es": "Inspecciona, modifica y reproduce tráfico HTTP(S) en tu entorno de pruebas."
+  },
+  "Review a branch- or tag-pinned action": {
+    "pt-BR": "Revise uma Action fixada por branch ou tag",
+    "es": "Revisa una Action fijada por rama o etiqueta"
+  },
+  "Workflow action is not pinned to a full commit SHA": {
+    "pt-BR": "A Action não está fixada em um SHA completo de commit",
+    "es": "La Action no está fijada a un SHA completo de commit"
+  },
+  "Verify the publisher and pin an immutable SHA when required by project policy.": {
+    "pt-BR": "Verifique o publicador e fixe um SHA imutável quando a política do projeto exigir.",
+    "es": "Verifica al publicador y fija un SHA inmutable cuando lo exija la política del proyecto."
+  },
+  "Review a case-sensitive import path": {
+    "pt-BR": "Revise a diferenciação de maiúsculas no import",
+    "es": "Revisa mayúsculas y minúsculas en el import"
+  },
+  "Review an unresolved relative import": {
+    "pt-BR": "Revise um import relativo não resolvido",
+    "es": "Revisa un import relativo no resuelto"
+  },
+  "Review an ambiguous import path": {
+    "pt-BR": "Revise um caminho de import ambíguo",
+    "es": "Revisa una ruta de import ambigua"
+  },
+  "Confirm the relative import casing on Linux and rerun the build.": {
+    "pt-BR": "Confirme as maiúsculas e minúsculas do caminho no Linux e execute a compilação novamente.",
+    "es": "Confirma las mayúsculas y minúsculas de la ruta en Linux y vuelve a compilar."
+  },
+  "Check tsconfig aliases, generated modules, extensions and excluded paths before editing.": {
+    "pt-BR": "Verifique aliases do tsconfig, módulos gerados, extensões e caminhos excluídos antes de editar.",
+    "es": "Comprueba los alias de tsconfig, módulos generados, extensiones y rutas excluidas antes de editar."
+  },
+  "Multiple case-insensitive candidates exist. Check the intended import.": {
+    "pt-BR": "Há vários candidatos com diferenças de maiúsculas. Verifique qual import era esperado.",
+    "es": "Hay varios candidatos con diferencias de mayúsculas. Comprueba cuál era el import previsto."
+  },
+  "RevScope uses metadata and bounded header triage to recommend external tools; no binaries or captures are analyzed or executed.": {
+    "pt-BR": "O RevScope usa metadados e leitura limitada de cabeçalhos para recomendar ferramentas externas; não analisa nem executa binários ou capturas.",
+    "es": "RevScope utiliza metadatos y lectura limitada de encabezados para recomendar herramientas externas; no analiza ni ejecuta binarios o capturas."
+  },
+  "pcap header": {
+    "pt-BR": "Cabeçalho PCAP",
+    "es": "Encabezado PCAP"
+  },
+  "pcapng header": {
+    "pt-BR": "Cabeçalho PCAPNG",
+    "es": "Encabezado PCAPNG"
+  },
+  "ELF header": {
+    "pt-BR": "Cabeçalho ELF",
+    "es": "Encabezado ELF"
+  },
+  "PE/MZ header": {
+    "pt-BR": "Cabeçalho PE/MZ",
+    "es": "Encabezado PE/MZ"
+  },
+  "ZIP header": {
+    "pt-BR": "Cabeçalho ZIP",
+    "es": "Encabezado ZIP"
+  },
+  "extension only; format not confirmed": {
+    "pt-BR": "Apenas extensão; formato não confirmado",
+    "es": "Solo extensión; formato no confirmado"
+  },
+  "header unavailable": {
+    "pt-BR": "Cabeçalho indisponível",
+    "es": "Encabezado no disponible"
+  },
+  "unverified": {
+    "pt-BR": "Não verificado",
+    "es": "Sin verificar"
   }
 }
