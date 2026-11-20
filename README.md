@@ -2,7 +2,7 @@
 
 # ForgeScope - All tools in unic place
 
-### Evidence before edits.
+### Evidence before edits. Will change logs for real RLS alerts.
 
 **Java 21 core. C#/.NET 10 workbench and Roslyn analysis.**
 
