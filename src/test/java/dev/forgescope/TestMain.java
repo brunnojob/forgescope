@@ -62,7 +62,7 @@ public final class TestMain {
             check(localized.contains("<html lang=\""+lang+"\""),"Report language "+lang);
             for(int step=1;step<=6;step++)check(localized.contains("id=\"tour-"+step+"\""),"Tour target "+lang+" / "+step);
             check(localized.contains("href=\"pt-br.html\"")&&localized.contains("href=\"es.html\""),"Offline language links "+lang);
-            check(!localized.contains("<script"),"Native tour without JS "+lang);
+            check(!localized.contains("<script"),"Native tour without JS "+lang);check(localized.contains("id=\"pipeline-1\""),"Real-evidence pipeline exists "+lang);check(localized.contains("id=\"pipeline-6\""),"Pipeline export stage exists "+lang);
         }
         check(I18n.language("pt").equals("pt-BR")&&I18n.language("bad\"><img").equals("en"),"Language aliases and input whitelist");
         for(Object engine:obj(Report.resource("log-rules.json")).values())for(Object value:arr(engine))for(String field:List.of("title","action")){

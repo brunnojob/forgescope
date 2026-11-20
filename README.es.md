@@ -10,6 +10,12 @@
 
 ForgeScope reúne análisis de impacto de código, revisión de parches, diagnósticos de CI y mantenimiento del repositorio en un informe local. Integra versiones Java de las reglas de PatchScope, CIFuse, RepoRelief y DevRescue, junto al catálogo de RevScope.
 
+## Flujo unificado
+
+El [recorrido con evidencias reales](https://brunnojob.github.io/forgescope/es.html#pipeline-1) recorre seis fases: **PatchScope** (revisión de diffs), **CIFuse** (CI e imports), **RepoRelief** (mantenimiento), **análisis Java/C#** (dependencias), **RevScope** (detección de artefactos y recomendaciones) y **exportación**.
+
+Pages utiliza datos de ejemplo, incluido un encabezado PCAP vacío. Las reglas integradas son versiones parciales; no ejecuta reparaciones automáticas, decompilación ni emulación de firmware.
+
 ## Demostración guiada
 
 Abre la demostración y pulsa **Iniciar demostración**. El recorrido de seis pasos presenta el resumen, las dependencias, las pruebas sugeridas, los analizadores, las referencias y las evidencias. Puedes avanzar, retroceder, cerrar o finalizar. Los enlaces de idioma conservan el paso actual.

@@ -10,6 +10,12 @@
 
 O ForgeScope reúne análise de impacto, revisão de diffs, diagnóstico de CI e manutenção em um relatório local. A versão 0.3 substitui a implementação Python/Node por Java e C#. Python e Node não são necessários para compilar ou executar o sistema.
 
+## Pipeline unificado
+
+O [tour de evidências reais](https://brunnojob.github.io/forgescope/pt-br.html#pipeline-1) acompanha seis etapas do relatório gerado: **PatchScope** (diff e alterações arriscadas), **CIFuse** (falhas de CI e imports), **RepoRelief** (saúde e manutenção do repositório), **impacto Java/C#** (dependências), **RevScope** (artefatos e escolha de ferramentas externas) e **exportação**.
+
+O Pages usa dados de exemplo, incluindo um cabeçalho PCAP vazio. O motor executa apenas verificações locais, não os programas analisados. As regras foram portadas parcialmente; não há equivalência integral com todos os projetos originais, nem reparo automático ou engenharia reversa de binários.
+
 ## Componentes
 
 - **Java:** análise com o compilador do JDK, regras de PatchScope/CIFuse/DevRescue/RepoRelief portadas, Git, relatórios HTML/JSON/Markdown/SARIF, histórico SQLite e validação de patches.

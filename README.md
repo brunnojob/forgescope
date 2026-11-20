@@ -10,7 +10,7 @@
 
 **Java 21 core. C#/.NET 10 workbench and Roslyn analysis.**
 
-[Interactive sample and tutorial](https://brunnojob.github.io/forgescope/#how-it-works) · [Português](README.pt-BR.md) · [Español](README.es.md) · [Architecture](docs/ARCHITECTURE.md) · [Migration notes](docs/MIGRATION-0.3.md)
+[Evidence-backed tour](https://brunnojob.github.io/forgescope/#pipeline-1) · [Tutorial](https://brunnojob.github.io/forgescope/#how-it-works) · [Português](README.pt-BR.md) · [Español](README.es.md) · [Architecture](docs/ARCHITECTURE.md) · [Migration notes](docs/MIGRATION-0.3.md)
 
 [![CI](https://github.com/brunnojob/forgescope/actions/workflows/ci.yml/badge.svg)](https://github.com/brunnojob/forgescope/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-21-ed8b00)
@@ -22,6 +22,20 @@
 Changing unfamiliar code means reconstructing dependencies, reviewing patches, reading CI logs and finding maintenance work across separate tools. ForgeScope puts those evidence streams into one local investigation report.
 
 **Version 0.3 migrates application logic to Java and C#. Python and Node are no longer runtime or build requirements.** HTML/CSS remain presentation formats. The portable report uses native HTML/CSS for language navigation and a six-step guided tour. The interactive localhost workbench runs its application logic in C# on ASP.NET Core.
+
+## Unified investigation pipeline
+
+ForgeScope runs a **local Java/.NET investigation** and presents its evidence in one report. The [six-stage live-report tour](https://brunnojob.github.io/forgescope/#pipeline-1) reads **actual findings from the bundled fixture**, rather than hard-coded marketing screenshots.
+
+| Source project | ForgeScope capability | Boundary |
+| --- | --- | --- |
+| [PatchScope](https://github.com/brunnojob/patchscope) | Unified diff review: sensitive changes, privileged workflows, action pinning and test-scope prompts | A subset of PatchScope rules, not full feature parity |
+| [CIFuse](https://github.com/brunnojob/cifuse) | CI-log grouping with redacted context and source locations, plus bounded JS/TS relative-import checks | Not the full CIFuse repair/PR workflow; no automatic fix claims |
+| [RepoRelief](https://github.com/brunnojob/reporelief) | README, license, workflow, broken-link, TODO/FIXME and conventional test-name audit | Heuristic maintenance checks, not measured coverage |
+| Java/Roslyn impact | Java AST / Roslyn source dependency paths and test candidates | No target build graph, generated-code evaluation or runtime proof |
+| [RevScope](https://github.com/brunnojob/revscope) | File-extension and header triage for captures, binaries, Android packages and embedded artifacts, with recommendations from the pinned tool catalog | No packet decoding, decompilation, firmware emulation or binary execution |
+
+To run an investigation on your own checkout, use the [Quick start](#quick-start). The published Pages report uses the synthetic **Java/C# + CI/diff + empty PCAP header** fixture; this allows visitors to verify the steps without uploading code. Outputs are HTML, JSON, SARIF and Markdown. Inspect reports before sharing because paths and original evidence may remain sensitive.
 
 ## What is implemented
 
