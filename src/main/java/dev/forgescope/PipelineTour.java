@@ -59,8 +59,8 @@ public final class PipelineTour {
         return b.append("</article>").toString();
     }
     public static String render(Map<String,Object> report,String language){
-        String lang=I18n.language(language);var findings=arr(report.get("findings")),impact=obj(report.get("impact"));
-        var artifacts=report.get("artifacts") instanceof Map<?,?> ? obj(report.get("artifacts")) : m();var signals=arr(artifacts.get("signals")),tools=arr(report.get("tools"));
+        String lang=I18n.language(language);var findings=arr(report.get("findings"));var impact=obj(report.get("impact"));
+        var artifacts=report.get("artifacts") instanceof Map<?,?> ? obj(report.get("artifacts")) : m();var signals=arr(artifacts.get("signals"));var tools=arr(report.get("tools"));
         var b=new StringBuilder("<section id=\"pipeline\" class=\"pipeline\" aria-label=\"");
         b.append(html(tr(lang,"Evidence-driven tour","Tour com evidências reais","Recorrido con evidencias reales"))).append("\">");
         b.append("<h2>").append(html(tr(lang,"See what ForgeScope actually finds","Veja o que o ForgeScope realmente encontra","Mira lo que ForgeScope realmente encuentra"))).append("</h2>");
@@ -80,7 +80,7 @@ public final class PipelineTour {
                 b.append("<p class=\"muted\">").append(n).append(" ").append(html(tr(lang,"finding(s) in this report","achado(s) neste relatório","hallazgo(s) en este informe"))).append("</p>");
                 if(n==0)b.append("<p>").append(html(tr(lang,"No matching findings in this input; this does not prove the repository is clean.","Nenhum achado neste exemplo; isso não prova ausência de problemas.","No hay hallazgos en esta entrada; eso no demuestra ausencia de problemas."))).append("</p>");
             }else if(i==4){
-                var affected=arr(impact.get("affected")),tests=arr(impact.get("test_candidates"));
+                var affected=arr(impact.get("affected"));var tests=arr(impact.get("test_candidates"));
                 b.append("<p>").append(html(tr(lang,"Affected source paths","Caminhos potencialmente afetados","Rutas posiblemente afectadas"))).append(": <strong>").append(affected.size()).append("</strong> · ")
                   .append(html(tr(lang,"Candidate tests","Testes candidatos","Pruebas candidatas"))).append(": <strong>").append(tests.size()).append("</strong></p>");
                 for(Object item:affected.stream().limit(3).toList()){var row=obj(item);b.append("<p><code>").append(html(row.get("path"))).append("</code></p>");}
