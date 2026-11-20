@@ -60,7 +60,7 @@ public final class PipelineTour {
     }
     public static String render(Map<String,Object> report,String language){
         String lang=I18n.language(language);var findings=arr(report.get("findings")),impact=obj(report.get("impact"));
-        var artifacts=obj(report.get("artifacts"));var signals=arr(artifacts.get("signals")),tools=arr(report.get("tools"));
+        var artifacts=report.get("artifacts") instanceof Map<?,?> ? obj(report.get("artifacts")) : m();var signals=arr(artifacts.get("signals")),tools=arr(report.get("tools"));
         var b=new StringBuilder("<section id=\"pipeline\" class=\"pipeline\" aria-label=\"");
         b.append(html(tr(lang,"Evidence-driven tour","Tour com evidências reais","Recorrido con evidencias reales"))).append("\">");
         b.append("<h2>").append(html(tr(lang,"See what ForgeScope actually finds","Veja o que o ForgeScope realmente encontra","Mira lo que ForgeScope realmente encuentra"))).append("</h2>");
