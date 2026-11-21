@@ -1,0 +1,46 @@
+name: Hub integration
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  hub:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: forgescope
+          POSTGRES_PASSWORD: fixture-only
+          POSTGRES_DB: forgescope_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      FORGESCOPE_TEST_DATABASE: Host=127.0.0.1;Database=forgescope_test;Username=forgescope;Password=fixture-only;SSL Mode=Disable
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet build dotnet/ForgeScope.Worker -c Release --nologo
+      - run: dotnet build dotnet/ForgeScope.Hub.Tests -c Release --nologo -m:1
+      - run: dotnet dotnet/ForgeScope.Hub/bin/Release/net10.0/ForgeScope.Hub.dll --self-test
+      - run: java tools/Build.java
+      - run: dotnet dotnet/ForgeScope.Hub.Tests/bin/Release/net10.0/ForgeScope.Hub.Tests.dll build/forgescope.jar dotnet/ForgeScope.Worker/bin/Release/net10.0/ForgeScope.Worker.dll
+      - run: docker build -t forgescope-hub:test .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forgescope-hub
+          path: |
+            dotnet/ForgeScope.Hub/bin/Release/net10.0/
+            docs/HUB.md

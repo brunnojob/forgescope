@@ -11,3 +11,7 @@ target/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+.env
+.env.*
+**/keys/
+*.pfx

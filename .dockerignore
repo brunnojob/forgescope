@@ -1,0 +1,11 @@
+.git
+**/bin
+**/obj
+build
+target
+.forgescope
+.env*
+**/*.pem
+**/*.pfx
+**/*.sqlite*
+**/keys

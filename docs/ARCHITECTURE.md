@@ -10,7 +10,7 @@
 
 ## Data ownership
 
-Raw inventory/full logs are not placed into reports. Derived compiler diagnostics and finding evidence can still be sensitive. Redaction is incomplete. No source upload, cloud database, login or telemetry service is implemented.
+Raw inventory/full logs are not placed into reports. Derived compiler diagnostics and finding evidence can still be sensitive. Redaction is incomplete. The local CLI/Workbench has no source upload, cloud database, login or telemetry service. The separately deployed [Hub](HUB.md) adds GitHub OAuth, bounded source imports, isolated owner-scoped PostgreSQL persistence and a local validation-runner protocol. Its schema is applied explicitly, never on normal startup.
 
 ## Build
 

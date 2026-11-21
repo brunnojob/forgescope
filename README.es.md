@@ -66,3 +66,7 @@ Las dependencias indican impacto potencial y no demuestran fallos. Los analizado
 [Arquitectura](docs/ARCHITECTURE.md) · [Migración](docs/MIGRATION-0.3.md) · [Licencias](third_party/README.md)
 
 MIT. God first.
+
+## Hub con acceso GitHub
+
+[ForgeScope Hub](docs/HUB.md) añade acceso con GitHub, investigaciones por repositorio/commit, importación opcional de logs de GitHub Actions, historial PostgreSQL, planes versionados con bloqueos y validación de parches mediante un ejecutor local de confianza. La interfaz ofrece ES/EN/PT-BR y temas claro/oscuro. La publicación requiere configurar la OAuth App, la conexión a la base existente y las claves persistentes del servidor. Pages sigue siendo la demostración estática; el acceso y la base funcionan en el Hub. Consulta la guía para el despliegue en Azure y el flujo completo.

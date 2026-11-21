@@ -74,3 +74,7 @@ Código MIT, com créditos e licenças originais preservados.
 O relatório no [Pages](https://brunnojob.github.io/forgescope/pt-br.html) está disponível integralmente em **PT-BR, inglês e espanhol**. Os links de idioma trocam títulos, resultados gerados, ações, estados, limitações e o tour. Caminhos, nomes de métodos e evidências originais de logs/compiladores são preservados.
 
 Clique em **Iniciar demonstração** para percorrer seis etapas, com próximo, anterior, fechar e concluir. O tour funciona no Pages e nos relatórios offline, sem JavaScript. No painel C#, selecione o idioma e aplique os filtros; novas análises preservam idioma e tema.
+
+## Hub com login GitHub
+
+O [ForgeScope Hub](docs/HUB.md) acrescenta login com GitHub, análises por repositório/commit, importação opcional de logs do GitHub Actions, histórico PostgreSQL, planos versionados com bloqueios e validação de patches por executor local confiável. A interface oferece PT-BR/EN/ES e temas claro/escuro. A publicação exige configurar o OAuth App, a conexão do banco existente e as chaves persistentes no servidor. O Pages continua sendo a demonstração estática; login e banco rodam no Hub. Consulte o guia para implantação na Azure e o fluxo completo.

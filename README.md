@@ -23,6 +23,14 @@ Changing unfamiliar code means reconstructing dependencies, reviewing patches, r
 
 **Version 0.3 migrates application logic to Java and C#. Python and Node are no longer runtime or build requirements.** HTML/CSS remain presentation formats. The portable report uses native HTML/CSS for language navigation and a six-step guided tour. The interactive localhost workbench runs its application logic in C# on ASP.NET Core.
 
+## GitHub-connected Hub
+
+The new **[ForgeScope Hub](docs/HUB.md)** adds GitHub sign-in, repository cards, commit-bound investigations, optional GitHub Actions log imports, persistent PostgreSQL history, versioned repair plans and reviewed-patch validation through a trusted local runner. Its server-rendered interface supports EN/PT-BR/ES and light/dark themes.
+
+**Flow:** GitHub → source/diff/CI evidence → plan and anchored blockers → approval of the exact revision → explicit local tests before/after → recorded result. Changing a plan or patch resets review readiness. The Hub never executes repository tests on its cloud host.
+
+Build `dotnet/ForgeScope.Hub` with .NET 10 or use the root Dockerfile. See the **[Azure, OAuth and runner setup](docs/HUB.md)** before deploying. The Hub requires a registered GitHub OAuth App, an existing PostgreSQL connection and persistent server keys. These deployment settings are not provisioned by a commit. GitHub Pages remains the static sample report; it cannot host login or the database API.
+
 ## Unified investigation pipeline
 
 ForgeScope runs a **local Java/.NET investigation** and presents its evidence in one report. The [six-stage live-report tour](https://brunnojob.github.io/forgescope/#pipeline-1) reads **actual findings from the bundled fixture**, rather than hard-coded marketing screenshots.
@@ -33,6 +41,7 @@ ForgeScope runs a **local Java/.NET investigation** and presents its evidence in
 | [CIFuse](https://github.com/brunnojob/cifuse) | CI-log grouping with redacted context and source locations, plus bounded JS/TS relative-import checks | Not the full CIFuse repair/PR workflow; no automatic fix claims |
 | [RepoRelief](https://github.com/brunnojob/reporelief) | README, license, workflow, broken-link, TODO/FIXME and conventional test-name audit | Heuristic maintenance checks, not measured coverage |
 | Java/Roslyn impact | Java AST / Roslyn source dependency paths and test candidates | No target build graph, generated-code evaluation or runtime proof |
+| [PlanRelay](https://github.com/ineedfoundmyway/planrelay) | Hub plans with line comments, blockers, revision digests and approval history | New C# review workflow; no automatic agent delivery or upstream parity |
 | [RevScope](https://github.com/brunnojob/revscope) | File-header triage and a browsable **22-tool** offline catalog with localized descriptions | No packet decoding, decompilation, firmware emulation or binary execution |
 
 To run an investigation on your own checkout, use the [Quick start](#quick-start). The published Pages report uses the synthetic **Java/C# + CI/diff + empty PCAP header** fixture; this allows visitors to verify the steps without uploading code. Outputs are HTML, JSON, SARIF and Markdown. Inspect reports before sharing because paths and original evidence may remain sensitive.
