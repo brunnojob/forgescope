@@ -26,7 +26,8 @@ Create a dedicated GitHub OAuth App under your account at <https://github.com/se
 | `GITHUB_CLIENT_ID` | The OAuth App client ID |
 | `GITHUB_CLIENT_SECRET` | The OAuth App client secret, stored as a server secret |
 | `FORGESCOPE_DATABASE` | Npgsql connection string for the existing database, with `SSL Mode=VerifyFull`; install the required trusted CA on the host |
-| `FORGESCOPE_KEYS` | Private, persistent writable directory for ASP.NET Data Protection keys, shared across replicas |
+| `FORGESCOPE_KEY_CERTIFICATE` | Base64-encoded private PKCS#12 certificate in an Azure secret. Enables PostgreSQL key-ring persistence with standard ASP.NET certificate encryption |
+| `FORGESCOPE_KEYS` | Alternative private persistent key directory, for local development or hosts with a private volume |
 | `FORGESCOPE_PRIVATE_REPOS` | Optional `true` requests GitHub's broad OAuth `repo` scope; otherwise only `read:user` is requested |
 | `FORGESCOPE_JAR` | Absolute path to built Java JAR (provided by Dockerfile) |
 | `FORGESCOPE_WORKER` | Absolute path to Roslyn DLL (provided by Dockerfile) |
@@ -39,9 +40,9 @@ Build:
 docker build -t forgescope-hub .
 ```
 
-Before serving requests, apply the **additive** schema explicitly by launching the same image/configuration with `--migrate`. `dotnet/ForgeScope.Hub/schema.sql` creates only the `forgescope` namespace and its three tables/index. Review it and grant the deployment identity the necessary rights. Normal startup never migrates automatically. Existing DevRescue tables and data remain outside this schema. After migration, the runtime identity needs access only to these tables.
+Before serving requests, apply the **additive** schema explicitly by launching the same image/configuration with `--migrate`. `dotnet/ForgeScope.Hub/schema.sql` creates only the `forgescope` namespace and its four tables/index. Review it and grant the deployment identity the necessary rights. Normal startup never migrates automatically. Existing DevRescue tables and data remain outside this schema. After migration, the runtime identity needs access only to these tables.
 
-Use a private persistent volume for the key directory and protect it with host storage encryption, permissions and backups. The application encrypts OAuth tokens using those keys; they are not stored in browser storage or authentication cookies. Losing the keys invalidates sessions and makes stored tokens unreadable. The framework cookie contains identity/session references only. Logout removes the server session. Expired session rows can be removed by your existing maintenance policy; no maintenance schedule is installed.
+For containers, use `FORGESCOPE_KEY_CERTIFICATE`: the framework encrypts the key-ring secret material with this certificate and stores it in `forgescope.data_protection_keys`, so replicas and container restarts share the same keys without a separate file share. Keep the certificate as an Azure secret, back it up privately and retain old decryption certificates when rotating it. Alternatively, use a private persistent volume for `FORGESCOPE_KEYS` and protect it with host storage encryption, permissions and backups. The application encrypts OAuth tokens using those keys; they are not stored in browser storage or authentication cookies. Losing the keys invalidates sessions and makes stored tokens unreadable. The framework cookie contains identity/session references only. Logout removes the server session. Expired session rows can be removed by your existing maintenance policy; no maintenance schedule is installed.
 
 Configure the reverse proxy to preserve the canonical Host, expose HTTPS, and allow analysis requests up to five minutes. The app uses the configured origin for OAuth callbacks and rejects a foreign Host. It does not trust arbitrary forwarded headers. `/health` reports process liveness; `/ready` checks the PostgreSQL schema. No CORS policy is needed because the Hub serves its own UI on the same origin.
 
@@ -87,3 +88,5 @@ dotnet dotnet/ForgeScope.Hub.Tests/bin/Release/net10.0/ForgeScope.Hub.Tests.dll 
 The integration suite uses a fake GitHub HTTP transport for OAuth/API protocol checks, a real PostgreSQL database, the actual Java/Roslyn analyzer and actual Git worktree test execution. No production credentials/database are used. CI also builds the container. A passing suite does not verify your registered OAuth App, Azure connection, ingress or deployed secrets; those require a real deployment smoke test.
 
 GitHub OAuth reference: <https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps>.
+
+The manual **Publish Hub image** workflow builds the public-source container for GHCR using the workflow-scoped GitHub token. It runs only when dispatched and tags the image with the commit SHA and `latest`. Use an immutable digest or commit tag when deploying. No Azure credentials are stored in the workflow.

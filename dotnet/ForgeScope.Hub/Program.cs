@@ -11,6 +11,8 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.RateLimiting;
 using Npgsql;
 using System.Threading.RateLimiting;
+using System.Security.Cryptography.X509Certificates;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
 namespace ForgeScope.Hub;
 
@@ -38,9 +40,21 @@ public static class Program
         var databaseOptions = new NpgsqlConnectionStringBuilder(connection);
         if (databaseOptions.SslMode != SslMode.VerifyFull && databaseOptions.Host is not ("localhost" or "127.0.0.1" or "::1"))
             throw new InvalidOperationException("Remote PostgreSQL requires SSL Mode=VerifyFull");
-        builder.Services.AddSingleton(NpgsqlDataSource.Create(connection)); builder.Services.AddSingleton<Store>(); builder.Services.AddSingleton<Analyzer>();
-        var keys = config["FORGESCOPE_KEYS"] ?? throw new InvalidOperationException("FORGESCOPE_KEYS persistent key directory is required");
-        builder.Services.AddDataProtection().SetApplicationName("ForgeScope.Hub").PersistKeysToFileSystem(new DirectoryInfo(keys));
+        var database = NpgsqlDataSource.Create(connection);
+        builder.Services.AddSingleton(database); builder.Services.AddSingleton<Store>(); builder.Services.AddSingleton<Analyzer>();
+        var protection = builder.Services.AddDataProtection().SetApplicationName("ForgeScope.Hub");
+        if (config["FORGESCOPE_KEY_CERTIFICATE"] is { Length: > 0 } certificate)
+        {
+            var cert = X509CertificateLoader.LoadPkcs12(Convert.FromBase64String(certificate), null, X509KeyStorageFlags.EphemeralKeySet);
+            if (!cert.HasPrivateKey || cert.NotAfter.ToUniversalTime() <= DateTime.UtcNow) throw new InvalidOperationException("A valid private key-encryption certificate is required");
+            protection.ProtectKeysWithCertificate(cert);
+            builder.Services.Configure<KeyManagementOptions>(o => o.XmlRepository = new PostgresKeys(database));
+        }
+        else
+        {
+            var keys = config["FORGESCOPE_KEYS"] ?? throw new InvalidOperationException("Configure a persistent key directory or a private key-encryption certificate");
+            protection.PersistKeysToFileSystem(new DirectoryInfo(keys));
+        }
         builder.Services.Configure<FormOptions>(o => { o.ValueLengthLimit = 2_100_000; o.MultipartBodyLengthLimit = 4_000_000; });
         builder.WebHost.ConfigureKestrel(k => k.Limits.MaxRequestBodySize = 4_000_000);
         builder.Services.AddSingleton(new GitHub(new HttpClient(githubTransport ?? new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(30) }));

@@ -14,3 +14,6 @@ CREATE TABLE IF NOT EXISTS forgescope.runner_tokens (
   digest text PRIMARY KEY, owner_id text NOT NULL, investigation_id uuid NOT NULL
     REFERENCES forgescope.investigations(id), expires_at timestamptz NOT NULL
 );
+CREATE TABLE IF NOT EXISTS forgescope.data_protection_keys (
+  id uuid PRIMARY KEY, created_at timestamptz NOT NULL DEFAULT now(), xml text NOT NULL
+);

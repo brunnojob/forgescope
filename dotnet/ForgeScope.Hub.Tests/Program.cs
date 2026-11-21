@@ -12,6 +12,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.IO.Compression;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using Microsoft.AspNetCore.DataProtection;
 
 if (args.Length != 2) throw new ArgumentException("Hub integration: JAVA_JAR WORKER_DLL; set FORGESCOPE_TEST_DATABASE to a disposable local PostgreSQL database");
 string database = Environment.GetEnvironmentVariable("FORGESCOPE_TEST_DATABASE") ?? throw new ArgumentException("A disposable test database is required");
@@ -37,12 +40,16 @@ var files = new Dictionary<string, byte[]>(); foreach (var name in new[] { "Test
 await File.WriteAllTextAsync(Path.Combine(checkout, "Test.java"), "class Test { public static void main(String[] args) { System.exit(0); } }\n"); string patch = await Git("diff", "--no-ext-diff"); await Git("checkout", "--", "Test.java");
 var tcp = new TcpListener(IPAddress.Loopback, 0); tcp.Start(); int port = ((IPEndPoint)tcp.LocalEndpoint).Port; tcp.Stop();
 string origin = $"http://127.0.0.1:{port}";
+using var rsa = RSA.Create(2048);
+var certificateRequest = new CertificateRequest("CN=ForgeScope integration test", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+using var certificate = certificateRequest.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddDays(1));
+string keyCertificate = Convert.ToBase64String(certificate.Export(X509ContentType.Pkcs12));
 var fake = new FakeGitHub(commit, patch, files);
 var app = ForgeScope.Hub.Program.CreateApp([], b =>
 {
     b.Logging.ClearProviders();
     b.Configuration.AddInMemoryCollection(new Dictionary<string, string?> {
-        ["FORGESCOPE_PUBLIC_URL"] = origin, ["FORGESCOPE_DATABASE"] = database, ["FORGESCOPE_KEYS"] = Path.Combine(directory, "keys"),
+        ["FORGESCOPE_PUBLIC_URL"] = origin, ["FORGESCOPE_DATABASE"] = database, ["FORGESCOPE_KEY_CERTIFICATE"] = keyCertificate,
         ["GITHUB_CLIENT_ID"] = "test-client", ["GITHUB_CLIENT_SECRET"] = "test-secret", ["FORGESCOPE_JAR"] = jar, ["FORGESCOPE_WORKER"] = worker });
 }, fake);
 app.Urls.Add(origin); int checks = 0;
@@ -77,6 +84,17 @@ try
     Check((await anon.PostAsync("/api/runner/claim", new StringContent("{}"))).StatusCode == HttpStatusCode.Unauthorized, "runner requires bearer");
     using (var spoof = new HttpRequestMessage(HttpMethod.Get, "/auth/github")) { spoof.Headers.Host = "evil.invalid"; Check((await anon.SendAsync(spoof)).StatusCode == HttpStatusCode.BadRequest, "spoofed Host rejected"); }
     await SignIn(alice, "alice"); await SignIn(bob, "bob"); Check(fake.PkceExchanged, "verifier exchanged on server");
+    using (var command = app.Services.GetRequiredService<NpgsqlDataSource>().CreateCommand("SELECT xml FROM forgescope.data_protection_keys LIMIT 1"))
+    {
+        string key = (string)(await command.ExecuteScalarAsync())!;
+        Check(key.Contains("encryptedSecret", StringComparison.Ordinal) && !key.Contains("<masterKey", StringComparison.Ordinal), "PostgreSQL key ring is certificate encrypted");
+    }
+    var protector = app.Services.GetRequiredService<IDataProtectionProvider>().CreateProtector("restart-test");
+    string protectedValue = protector.Protect("fixture");
+    var services = new ServiceCollection(); services.AddLogging();
+    services.AddDataProtection().SetApplicationName("ForgeScope.Hub").ProtectKeysWithCertificate(certificate);
+    services.Configure<Microsoft.AspNetCore.DataProtection.KeyManagement.KeyManagementOptions>(o => o.XmlRepository = new PostgresKeys(app.Services.GetRequiredService<NpgsqlDataSource>()));
+    using (var provider = services.BuildServiceProvider()) Check(provider.GetRequiredService<IDataProtectionProvider>().CreateProtector("restart-test").Unprotect(protectedValue) == "fixture", "persisted key ring works across independent server instances");
     string repos = await alice.GetStringAsync("/repositories"); Check(repos.Contains("fixture/repo", StringComparison.Ordinal), "authenticated repository list");
     string catalog = await alice.GetStringAsync("/catalog?lang=es&q=PCAPdroid");
     Check(catalog.Contains("PCAPdroid", StringComparison.Ordinal) && !catalog.Contains("<h2>Ghidra</h2>", StringComparison.Ordinal), "integrated RevScope catalog filter");
