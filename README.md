@@ -25,6 +25,8 @@ Changing unfamiliar code means reconstructing dependencies, reviewing patches, r
 
 ## GitHub-connected Hub
 
+[**Open ForgeScope Hub**](https://forgescope-hub.thankfulmoss-3d30be42.canadacentral.azurecontainerapps.io/) · [Container image](https://github.com/users/brunnojob/packages/container/package/forgescope-hub)
+
 The new **[ForgeScope Hub](docs/HUB.md)** adds GitHub sign-in, repository cards, commit-bound investigations, optional GitHub Actions log imports, persistent PostgreSQL history, versioned repair plans and reviewed-patch validation through a trusted local runner. Its server-rendered interface supports EN/PT-BR/ES and light/dark themes.
 
 **Flow:** GitHub → source/diff/CI evidence → plan and anchored blockers → approval of the exact revision → explicit local tests before/after → recorded result. Changing a plan or patch resets review readiness. The Hub never executes repository tests on its cloud host.

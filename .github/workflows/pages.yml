@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      FORGESCOPE_HUB_URL: https://forgescope-hub.thankfulmoss-3d30be42.canadacentral.azurecontainerapps.io
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
