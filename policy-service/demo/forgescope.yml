@@ -1,0 +1,8 @@
+version: 1
+rules:
+  - id: integration-evidence
+    paths: ['demo/**']
+    ci:
+      workflow: demo-ci.yml
+      job: integration
+      artifact: integration-evidence

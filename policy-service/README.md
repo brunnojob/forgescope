@@ -65,3 +65,52 @@ ORDER BY id;
 ```
 
 Reconciliation is periodic (60 seconds by default). GitHub checks are attached to commits, so use a distinct head commit for each PR and keep native required reviews enabled where applicable. Use a test repository without a merge queue for this flow. Workflow runs whose PR association is absent cannot provide CI evidence in this release.
+
+## Event-triggered checks
+
+Set `FORGESCOPE_WEBHOOK_SECRET` to a shared random secret of at least 32
+characters. The listener defaults to `127.0.0.1:8080`, configurable with
+`FORGESCOPE_WEBHOOK_BIND` and `FORGESCOPE_WEBHOOK_PORT`. Route an HTTPS
+reverse proxy to `POST /github/webhook` and set request size and read timeouts
+at the proxy. Configure the App to deliver pull request, pull request review,
+workflow run and push events. Verified deliveries for the configured
+installation and repositories queue a refresh. Multiple deliveries can share a
+refresh. Periodic reconciliation still runs if an event is missed.
+
+The check includes matched paths, the review or CI requirement, a link to the CI
+attempt, and steps to resolve failures. PatchScope and CIFuse add advisory
+findings when a patch or supported Actions job log is available. The check shows
+finding titles and counts and keeps raw logs out of GitHub and PostgreSQL output.
+
+## Preview a candidate policy
+
+```sh
+java -jar policy-service/target/policy-service-0.1.0.jar simulate owner/repo candidate.yml
+```
+
+The command uses the same GitHub App credentials to read open PRs. It prints
+current and candidate decisions in JSON, with the observed head and base SHA.
+It does not start the web server, connect to PostgreSQL, or publish checks.
+Run it separately for each repository. CI results, reviews and artifacts can
+change while any preview is being generated.
+
+## Reproducible live demo
+
+Use a disposable test repo included in the App installation. Put
+[demo/forgescope.yml](demo/forgescope.yml) at the root of the base branch, and
+[demo/demo-ci.yml](demo/demo-ci.yml) in `.github/workflows/`. Open a non-draft
+PR adding a nonempty `demo/fixture.txt`. Wait for the successful integration job
+and the failed ForgeScope check. Require that check from the App on the base
+branch, then record the blocked merge state and the PR head SHA. Push a second
+commit adding a nonempty `demo/upload-evidence` file. The same workflow will
+upload the artifact and ForgeScope should pass.
+
+Use the authenticated GitHub CLI to collect links to the check runs and verify
+the corrected PR is mergeable.
+
+```sh
+# Before pushing the fix
+python3 policy-service/demo/verify.py owner/demo-repo PR_NUMBER BLOCKED_HEAD_SHA APP_SLUG --capture-blocked
+# After the new GitHub check passes
+python3 policy-service/demo/verify.py owner/demo-repo PR_NUMBER BLOCKED_HEAD_SHA APP_SLUG
+```
