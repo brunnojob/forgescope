@@ -167,3 +167,7 @@ To include cross-runtime protocol checks in the Java test process, set `FORGESCO
 Original project references and pinned commits are in [provenance.json](src/main/resources/provenance.json). Original MIT notices are retained in [third_party/licenses](third_party/licenses); dependency notices are in [third_party/README.md](third_party/README.md). PatchScope, CIFuse, RepoRelief, DevRescue and RevScope remain independent repositories.
 
 God first. Build useful things, and make the evidence inspectable.
+
+## GitHub merge policy
+
+The [ForgeScope policy service](policy-service/README.md) reconciles versioned merge rules against GitHub PRs and stores decision evidence in PostgreSQL.

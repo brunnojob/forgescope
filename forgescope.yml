@@ -1,0 +1,8 @@
+version: 1
+rules:
+  - id: policy-review
+    paths:
+      - 'forgescope.yml'
+      - 'policy-service/**'
+      - '.github/workflows/**'
+    approvals: 1
