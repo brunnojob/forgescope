@@ -1,0 +1,19 @@
+name: ForgeScope demo CI
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Validate and record the fixture
+        run: |
+          test -f demo/fixture.txt
+          sha256sum demo/fixture.txt > integration-evidence.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ hashFiles('demo/upload-evidence') != '' }}
+        with:
+          name: integration-evidence
+          path: integration-evidence.txt
+          if-no-files-found: error

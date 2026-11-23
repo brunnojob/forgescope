@@ -13,5 +13,18 @@
     <dependency><groupId>org.postgresql</groupId><artifactId>postgresql</artifactId><scope>runtime</scope></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
   </dependencies>
-  <build><plugins><plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin></plugins></build>
+  <build>
+    <resources>
+      <resource><directory>src/main/resources</directory></resource>
+      <resource><directory>../src/main/resources</directory><includes><include>log-rules.json</include></includes></resource>
+      <resource><directory>../third_party</directory><targetPath>META-INF/third-party</targetPath></resource>
+    </resources>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId><artifactId>build-helper-maven-plugin</artifactId><version>3.6.1</version>
+        <executions><execution><id>shared-java-engines</id><phase>generate-sources</phase><goals><goal>add-source</goal></goals>
+          <configuration><sources><source>${project.basedir}/../src/main/java</source></sources></configuration>
+        </execution></executions>
+      </plugin>
+<plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId><configuration><mainClass>dev.forgescope.policy.PolicyService</mainClass></configuration></plugin></plugins></build>
 </project>

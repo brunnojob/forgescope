@@ -5,6 +5,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import dev.forgescope.Engines;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
@@ -19,24 +21,83 @@ public class PolicyService {
     static final String CHECK = "ForgeScope / merge policy";
     private static final Logger LOG = LoggerFactory.getLogger(PolicyService.class);
     private final JdbcTemplate db;
+    private final AtomicBoolean requested = new AtomicBoolean();
 
     public PolicyService(JdbcTemplate db) { this.db = db; }
-    public static void main(String[] args) { SpringApplication.run(PolicyService.class, args); }
+    public static void main(String[] args) throws Exception {
+        if (args.length > 0 && args[0].equals("simulate")) {
+            if (args.length != 3) throw new IllegalArgumentException("Usage: simulate owner/repo candidate.yml");
+            simulate(args[1], Path.of(args[2]));
+            return;
+        }
+        SpringApplication.run(PolicyService.class, args);
+    }
+
+    private static GitHub connect() throws Exception {
+        return GitHub.installation(required("FORGESCOPE_APP_ID"),
+            Long.parseLong(required("FORGESCOPE_INSTALLATION_ID")),
+            Files.readString(Path.of(required("FORGESCOPE_PRIVATE_KEY_FILE"))));
+    }
+
+    private static void simulate(String repo, Path file) throws Exception {
+        String path = "/repos/" + repository(repo);
+        Policy candidate;
+        try (var input = Files.newInputStream(file)) { candidate = Policy.read(input.readNBytes(32_769)); }
+        var github = connect();
+        var results = new ArrayList<Map<String, Object>>();
+        for (JsonNode item : github.list(path + "/pulls?state=open", null)) {
+            int number = item.required("number").asInt();
+            String pull = path + "/pulls/" + number;
+            JsonNode pr = github.get(pull);
+            if (!pr.path("state").asText().equals("open")) continue;
+            String head = sha(pr, "head");
+            String base = sha(pr, "base");
+            try {
+                Evidence next = evaluatePolicy(github, path, pull, pr, head, base, candidate, false);
+                var result = new LinkedHashMap<String, Object>();
+                result.put("pull_request", number);
+                result.put("head_sha", head);
+                result.put("base_sha", base);
+                result.put("candidate", next);
+                try {
+                    result.put("current", evaluatePolicy(github, path, pull, pr, head, base, loadPolicy(github, path, base), false));
+                } catch (Exception unavailable) {
+                    result.put("current_error", "Base policy or evidence unavailable");
+                }
+                JsonNode latest = github.get(pull);
+                if (!head.equals(sha(latest, "head")) || !base.equals(sha(latest, "base")) || !latest.path("state").asText().equals("open"))
+                    throw new IllegalStateException("Pull request changed");
+                results.add(result);
+            } catch (Exception unavailable) {
+                results.add(Map.of("pull_request", number, "error", "Pull request changed or evidence unavailable; rerun preview"));
+            }
+        }
+        System.out.println(new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(results));
+    }
+
+    void requestEvaluation() { requested.set(true); }
+
+    @Scheduled(fixedDelay = 1000)
+    public void processEvent() {
+        if (requested.getAndSet(false)) reconcile();
+    }
+
+    static String repository(String repo) {
+        if (!repo.matches("[A-Za-z0-9_-]+/[A-Za-z0-9_.-]+") || repo.endsWith("/.") || repo.endsWith("/.."))
+            throw new IllegalArgumentException("Invalid repository");
+        return repo;
+    }
 
     @Scheduled(fixedDelayString = "${forgescope.poll-ms:60000}")
     public void reconcile() {
         try {
-            var github = GitHub.installation(required("FORGESCOPE_APP_ID"),
-                Long.parseLong(required("FORGESCOPE_INSTALLATION_ID")),
-                Files.readString(Path.of(required("FORGESCOPE_PRIVATE_KEY_FILE"))));
+            var github = connect();
             for (String configured : required("FORGESCOPE_REPOSITORIES").split(",")) {
-                String repo = configured.strip();
-                if (!repo.matches("[A-Za-z0-9_-]+/[A-Za-z0-9_.-]+") || repo.endsWith("/.") || repo.endsWith("/.."))
-                    throw new IllegalArgumentException("Invalid configured repository");
+                String repo = repository(configured.strip());
                 try {
                     for (JsonNode pr : github.list("/repos/" + repo + "/pulls?state=open", null)) {
                         int number = pr.required("number").asInt();
-                        try { evaluate(github, repo, number); }
+                        try { evaluate(github, repo, number, required("FORGESCOPE_APP_ID")); }
                         catch (Exception error) { LOG.warn("Evaluation failed for {} #{} ({})", repo, number, error.getMessage()); }
                     }
                 } catch (Exception error) { LOG.warn("Repository scan failed for {} ({})", repo, error.getMessage()); }
@@ -46,7 +107,7 @@ public class PolicyService {
         }
     }
 
-    private void evaluate(GitHub github, String repo, int number) throws Exception {
+    void evaluate(GitHub github, String repo, int number, String appId) throws Exception {
         String path = "/repos/" + repo;
         String pull = path + "/pulls/" + number;
         JsonNode pr = github.get(pull);
@@ -55,14 +116,13 @@ public class PolicyService {
         String base = sha(pr, "base");
         String externalId = repo + "#" + number;
         String checkPath = path + "/check-runs";
-        String appId = required("FORGESCOPE_APP_ID");
         var current = github.list(path + "/commits/" + head + "/check-runs?check_name=ForgeScope%20%2F%20merge%20policy&filter=all", "check_runs")
             .stream().filter(check -> check.path("app").path("id").asText().equals(appId)
                 && check.path("external_id").asText().equals(externalId)).findFirst();
 
         Evidence evidence;
         try {
-            evidence = evaluatePolicy(github, path, pull, pr, head, base);
+            evidence = evaluatePolicy(github, path, pull, pr, head, base, loadPolicy(github, path, base), true);
         } catch (Exception error) {
             LOG.warn("Policy inputs unavailable for {} ({})", externalId, error.getMessage());
             evidence = new Evidence(false, "Policy input unavailable or invalid. Verify the base policy, App permissions and GitHub API.");
@@ -94,11 +154,15 @@ public class PolicyService {
         }
     }
 
-    private static Evidence evaluatePolicy(GitHub github, String path, String pull, JsonNode pr, String head, String base) throws Exception {
+    private static Policy loadPolicy(GitHub github, String path, String base) throws Exception {
         JsonNode contents = github.get(path + "/contents/forgescope.yml?ref=" + base);
         if (!contents.path("type").asText().equals("file") || !contents.path("encoding").asText().equals("base64"))
             throw new IllegalArgumentException("Expected a regular policy file");
-        Policy policy = Policy.read(Base64.getMimeDecoder().decode(contents.required("content").asText()));
+        return Policy.read(Base64.getMimeDecoder().decode(contents.required("content").asText()));
+    }
+
+    private static Evidence evaluatePolicy(GitHub github, String path, String pull, JsonNode pr,
+                                           String head, String base, Policy policy, boolean diagnostics) throws Exception {
         List<JsonNode> changes = github.list(pull + "/files", null);
         if (changes.size() != pr.required("changed_files").asInt()) throw new IllegalArgumentException("Incomplete file list");
         List<String> files = new ArrayList<>();
@@ -110,11 +174,16 @@ public class PolicyService {
         int approvals = rules.stream().anyMatch(rule -> rule.approvals() != null)
             ? approvals(github.list(pull + "/reviews", null), head, pr.required("user").required("id").asLong()) : 0;
         var lines = new ArrayList<String>();
-        var runs = new HashMap<String, Optional<JsonNode>>();
+        var runs = new LinkedHashMap<String, Optional<JsonNode>>();
         boolean passed = true;
         for (Policy.Rule rule : rules) {
+            var matching = files.stream().distinct().sorted().filter(file -> rule.applies(List.of(file))).toList();
+            lines.add("### " + rule.id());
+            lines.add("Changed paths: " + matching.stream().limit(3).map(PolicyService::literal)
+                .collect(java.util.stream.Collectors.joining(", ")) + (matching.size() > 3 ? " (+" + (matching.size() - 3) + " more)" : ""));
             if (rule.approvals() != null) {
-                lines.add("- " + rule.id() + ": " + approvals + " eligible approval(s), " + rule.approvals() + " required.");
+                lines.add("- Approvals: " + approvals + "/" + rule.approvals()
+                    + (approvals < rule.approvals() ? ". Request an eligible reviewer for this commit." : ". Passed."));
                 passed &= approvals >= rule.approvals();
             }
             if (rule.ci() != null) {
@@ -127,11 +196,22 @@ public class PolicyService {
                         .max(Comparator.comparingLong(run -> run.required("id").asLong())));
                 }
                 Evidence ci = checkCi(github, path, requirement, runs.get(workflow));
-                lines.add("- " + rule.id() + ": " + ci.summary());
+                lines.add("- " + ci.summary());
                 passed &= ci.passed();
             }
         }
-        return new Evidence(passed, lines.isEmpty() ? "No rules matched the changed files." : String.join("\n", lines));
+        if (diagnostics) {
+            String patchNotes = patchNotes(changes);
+            if (!patchNotes.isBlank()) lines.add(patchNotes);
+            for (var run : runs.values()) {
+                if (run.isPresent() && run.get().path("conclusion").asText().equals("failure")) {
+                    String ciNotes = ciNotes(github, path, run.get());
+                    if (!ciNotes.isBlank()) lines.add(ciNotes);
+                    break;
+                }
+            }
+        }
+        return new Evidence(passed, lines.isEmpty() ? "No rules matched the changed files." : String.join("\n\n", lines));
     }
 
     private static boolean matchesRun(JsonNode run, JsonNode pr, String head, String base, String workflow) {
@@ -146,7 +226,7 @@ public class PolicyService {
     }
 
     private static Evidence checkCi(GitHub github, String path, Policy.Ci requirement, Optional<JsonNode> selected) throws Exception {
-        if (selected.isEmpty()) return new Evidence(false, "No matching workflow run for this PR and base revision.");
+        if (selected.isEmpty()) return new Evidence(false, "Run " + literal(requirement.workflow()) + " on the current PR revision.");
         JsonNode run = selected.get();
         long id = run.required("id").asLong();
         int attempt = run.required("run_attempt").asInt();
@@ -156,15 +236,57 @@ public class PolicyService {
         String endpoint = path + "/actions/runs/" + id;
         if (requirement.job() != null && github.list(endpoint + "/attempts/" + attempt + "/jobs", "jobs").stream()
             .noneMatch(job -> job.path("name").asText().equals(requirement.job()) && job.path("conclusion").asText().equals("success")))
-            return new Evidence(false, link + " has no successful required job.");
+            return new Evidence(false, link + " is missing successful job " + literal(requirement.job()) + ". Fix or enable the job and rerun CI.");
         if (requirement.artifact() != null) {
             Instant started = Instant.parse(github.get(endpoint + "/attempts/" + attempt).required("run_started_at").asText());
             if (github.list(endpoint + "/artifacts", "artifacts").stream().noneMatch(artifact ->
                 artifact.path("name").asText().equals(requirement.artifact()) && !artifact.path("expired").asBoolean(true)
                     && !Instant.parse(artifact.required("created_at").asText()).isBefore(started)))
-                return new Evidence(false, link + " has no required unexpired artifact from this attempt.");
+                return new Evidence(false, link + " is missing unexpired artifact " + literal(requirement.artifact()) + ". Upload it in this workflow attempt.");
         }
         return new Evidence(true, link + " meets the CI requirements.");
+    }
+
+    static String literal(String value) {
+        String safe = value.replaceAll("[^\\p{L}\\p{N} ./_@:+-]", "?");
+        return "`" + safe.substring(0, Math.min(120, safe.length())).strip() + "`";
+    }
+
+    private static String patchNotes(List<JsonNode> changes) {
+        try {
+            var diff = new StringBuilder();
+            for (var change : changes) {
+                String filename = change.path("filename").asText();
+                String patch = change.path("patch").asText();
+                if (patch.isBlank() || !filename.matches("[A-Za-z0-9._ /-]+")) continue;
+                if (diff.length() + patch.length() > 250_000) break;
+                diff.append("diff --git a/").append(filename).append(" b/").append(filename)
+                    .append("\n--- a/").append(filename).append("\n+++ b/").append(filename).append('\n').append(patch).append('\n');
+            }
+            return notes("PatchScope", Engines.diff(diff.toString()).findings());
+        } catch (Exception ignored) { return ""; }
+    }
+
+    private static String ciNotes(GitHub github, String path, JsonNode run) {
+        try {
+            var jobs = github.list(path + "/actions/runs/" + run.required("id").asLong()
+                + "/attempts/" + run.required("run_attempt").asInt() + "/jobs", "jobs");
+            var logs = new ArrayList<Map<String, Object>>();
+            for (var job : jobs.stream().filter(j -> j.path("conclusion").asText().equals("failure")).limit(3).toList()) {
+                logs.add(Map.of("name", "GitHub Actions job", "text", github.jobLog(path, job.required("id").asLong())));
+            }
+            return notes("CIFuse", Engines.logs(logs, Map.of()).stream()
+                .filter(row -> row instanceof Map<?, ?> item && "cifuse".equals(item.get("engine"))).toList());
+        } catch (Exception ignored) { return ""; }
+    }
+
+    private static String notes(String engine, List<Object> findings) {
+        var items = findings.stream().filter(Map.class::isInstance).map(Map.class::cast).limit(5)
+            .map(item -> "- " + literal(String.valueOf(item.get("title"))) +
+                (item.get("path") instanceof String path ? " · " + literal(path) : "") +
+                (item.get("count") instanceof Number count ? " · " + count + " occurrence(s)" : ""))
+            .toList();
+        return items.isEmpty() ? "" : "### " + engine + " · advisory\n" + String.join("\n", items);
     }
 
     static int approvals(List<JsonNode> reviews, String head, long author) {

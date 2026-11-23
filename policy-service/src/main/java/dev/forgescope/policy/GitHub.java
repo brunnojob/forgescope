@@ -52,6 +52,25 @@ final class GitHub {
         return json.readTree(response.body());
     }
 
+    String jobLog(String repoPath, long job) throws Exception {
+        var endpoint = HttpRequest.newBuilder(URI.create("https://api.github.com" + repoPath + "/actions/jobs/" + job + "/logs"))
+            .timeout(Duration.ofSeconds(15)).header("Authorization", "Bearer " + token).build();
+        var redirect = client.send(endpoint, HttpResponse.BodyHandlers.discarding());
+        if (redirect.statusCode() != 302) throw new java.io.IOException("GitHub job log unavailable");
+        URI location = URI.create(redirect.headers().firstValue("Location").orElseThrow());
+        String host = location.getHost();
+        if (!"https".equals(location.getScheme()) || host == null || location.getUserInfo() != null
+            || (location.getPort() != -1 && location.getPort() != 443)
+            || !host.toLowerCase(Locale.ROOT).matches("[a-z0-9-]+\\.blob\\.core\\.windows\\.net"))
+            throw new java.io.IOException("Unsupported GitHub log storage host");
+        var download = HttpRequest.newBuilder(location).timeout(Duration.ofSeconds(15)).build();
+        var response = client.send(download, HttpResponse.BodyHandlers.ofInputStream());
+        try (var body = response.body()) {
+            if (response.statusCode() != 200) throw new java.io.IOException("Job log download unavailable");
+            return new String(body.readNBytes(120_000), java.nio.charset.StandardCharsets.UTF_8);
+        }
+    }
+
     List<JsonNode> list(String path, String key) throws Exception {
         List<JsonNode> items = new ArrayList<>();
         for (int page = 1; page <= 30; page++) {
