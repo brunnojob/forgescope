@@ -15,13 +15,15 @@ import static org.mockito.Mockito.*;
 
 class PolicyFlowTest {
     private static final ObjectMapper JSON = new ObjectMapper();
-    private static final String REPO = "/repos/owner/demo";
+    private static final String REPOSITORY = "owner/demo-" + java.util.UUID.randomUUID();
+    private static final String REPO = "/repos/" + REPOSITORY;
     private static final String BASE = "a".repeat(40);
 
     @Test
     void publishesFailureAndSuccessOnSeparateHeadCommits() throws Exception {
         var github = mock(GitHub.class);
-        var service = new PolicyService(mock(JdbcTemplate.class));
+        var db = auditDatabase();
+        var service = new PolicyService(db);
         String bytes = Base64.getEncoder().encodeToString("""
             version: 1
             rules:
@@ -46,14 +48,14 @@ class PolicyFlowTest {
         String blocked = "b".repeat(40);
         stubRevision(github, blocked);
         when(github.list(REPO + "/actions/runs/7/artifacts", "artifacts")).thenReturn(List.of());
-        service.evaluate(github, "owner/demo", 1, "42");
+        service.evaluate(github, REPOSITORY, 1, "42");
 
         String passing = "c".repeat(40);
         stubRevision(github, passing);
         when(github.list(REPO + "/actions/runs/7/artifacts", "artifacts")).thenReturn(rows("""
             [{"name":"integration-evidence","expired":false,"created_at":"2026-01-01T00:01:00Z"}]
             """));
-        service.evaluate(github, "owner/demo", 1, "42");
+        service.evaluate(github, REPOSITORY, 1, "42");
 
         var payloads = ArgumentCaptor.forClass(Map.class);
         verify(github, times(2)).request(eq("POST"), eq(REPO + "/check-runs"), payloads.capture());
@@ -64,6 +66,14 @@ class PolicyFlowTest {
         assertTrue(decisions.get(0).get("output").toString().contains("demo/fixture.txt"));
         assertEquals(passing, decisions.get(1).get("head_sha"));
         assertEquals("success", decisions.get(1).get("conclusion"));
+        if (System.getenv("FORGESCOPE_TEST_JDBC_URL") != null) {
+            assertEquals(List.of("failure", "success"), db.queryForList(
+                "SELECT conclusion FROM policy_evaluation WHERE repository = ? AND pull_request = 1 ORDER BY id",
+                String.class, REPOSITORY));
+            assertEquals(List.of(blocked, passing), db.queryForList(
+                "SELECT head_sha FROM policy_evaluation WHERE repository = ? AND pull_request = 1 ORDER BY id",
+                String.class, REPOSITORY));
+        }
     }
 
     @Test
@@ -74,6 +84,16 @@ class PolicyFlowTest {
         original[0] = 'X';
         assertFalse(GitHubEvents.valid("key", original, signature));
         assertFalse(GitHubEvents.valid("key", original, "sha1=invalid"));
+    }
+
+    private static JdbcTemplate auditDatabase() {
+        String url = System.getenv("FORGESCOPE_TEST_JDBC_URL");
+        if (url == null) return mock(JdbcTemplate.class);
+        var dataSource = new org.springframework.jdbc.datasource.DriverManagerDataSource(url,
+            System.getenv("FORGESCOPE_TEST_JDBC_USER"), System.getenv("FORGESCOPE_TEST_JDBC_PASSWORD"));
+        new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
+            new org.springframework.core.io.ClassPathResource("schema.sql")).execute(dataSource);
+        return new JdbcTemplate(dataSource);
     }
 
     private static void stubRevision(GitHub github, String head) throws Exception {
