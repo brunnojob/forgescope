@@ -96,6 +96,8 @@ class PolicyFlowTest {
         verify(first).list("/repos/alpha/one/pulls?state=open", null);
         verify(second).list("/repos/beta/two/pulls?state=open", null);
         verify(app, never()).asInstallation(3);
+        verify(first).list("/installation/repositories", "repositories");
+        verify(second).list("/installation/repositories", "repositories");
         verifyNoMoreInteractions(first, second);
     }
 
