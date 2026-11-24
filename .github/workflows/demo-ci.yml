@@ -1,0 +1,25 @@
+name: ForgeScope live demo
+
+on:
+  pull_request:
+    paths:
+      - 'live-demo/**'
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify demo fixture
+        run: test -s live-demo/fixture.txt
+      - name: Upload required evidence
+        if: hashFiles('live-demo/upload-evidence') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-evidence
+          path: live-demo/fixture.txt
