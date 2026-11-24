@@ -36,7 +36,14 @@ public class PolicyService {
     private static GitHub connect() throws Exception {
         return GitHub.installation(required("FORGESCOPE_APP_ID"),
             Long.parseLong(required("FORGESCOPE_INSTALLATION_ID")),
-            Files.readString(Path.of(required("FORGESCOPE_PRIVATE_KEY_FILE"))));
+            privateKey());
+    }
+
+    private static String privateKey() throws Exception {
+        String encoded = System.getenv("FORGESCOPE_PRIVATE_KEY_BASE64");
+        if (encoded != null && !encoded.isBlank())
+            return new String(Base64.getDecoder().decode(encoded), java.nio.charset.StandardCharsets.US_ASCII);
+        return Files.readString(Path.of(required("FORGESCOPE_PRIVATE_KEY_FILE")));
     }
 
     private static void simulate(String repo, Path file) throws Exception {
@@ -93,7 +100,7 @@ public class PolicyService {
         try {
             String appId = required("FORGESCOPE_APP_ID");
             if (Boolean.parseBoolean(System.getenv("FORGESCOPE_DISCOVER_INSTALLATIONS"))) {
-                var app = GitHub.app(appId, Files.readString(Path.of(required("FORGESCOPE_PRIVATE_KEY_FILE"))));
+                var app = GitHub.app(appId, privateKey());
                 reconcileInstallations(app, appId);
             } else {
                 var github = connect();

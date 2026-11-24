@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.*;
 import java.security.*;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.io.ByteArrayOutputStream;
 
 final class GitHub {
     private final ObjectMapper json = new ObjectMapper();
@@ -23,9 +24,7 @@ final class GitHub {
 
     static GitHub app(String app, String pem) throws Exception {
         if (!app.matches("[0-9]+")) throw new IllegalArgumentException("Invalid App ID");
-        var key = KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(
-            Base64.getDecoder().decode(pem.replace("-----BEGIN PRIVATE KEY-----", "")
-                .replace("-----END PRIVATE KEY-----", "").replaceAll("\\s", ""))));
+        var key = KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(privateKeyDer(pem)));
         var encoder = Base64.getUrlEncoder().withoutPadding();
         long now = Instant.now().getEpochSecond();
         var json = new ObjectMapper();
@@ -36,6 +35,43 @@ final class GitHub {
         signature.update(claims.getBytes(java.nio.charset.StandardCharsets.US_ASCII));
         String jwt = claims + "." + encoder.encodeToString(signature.sign());
         return new GitHub(jwt);
+    }
+
+    static byte[] privateKeyDer(String pem) {
+        boolean pkcs1 = pem.contains("-----BEGIN RSA PRIVATE KEY-----");
+        String encoded = pem.replace("-----BEGIN PRIVATE KEY-----", "")
+            .replace("-----END PRIVATE KEY-----", "")
+            .replace("-----BEGIN RSA PRIVATE KEY-----", "")
+            .replace("-----END RSA PRIVATE KEY-----", "")
+            .replaceAll("\\s", "");
+        byte[] key = Base64.getDecoder().decode(encoded);
+        if (!pkcs1) return key;
+
+        byte[] version = der(0x02, new byte[] {0});
+        byte[] rsaAlgorithm = der(0x30, concat(
+            new byte[] {0x06, 0x09, 0x2a, (byte) 0x86, 0x48, (byte) 0x86, (byte) 0xf7, 0x0d, 0x01, 0x01, 0x01},
+            new byte[] {0x05, 0x00}));
+        return der(0x30, concat(version, rsaAlgorithm, der(0x04, key)));
+    }
+
+    private static byte[] der(int tag, byte[] value) {
+        var output = new ByteArrayOutputStream(value.length + 6);
+        output.write(tag);
+        if (value.length < 128) {
+            output.write(value.length);
+        } else {
+            int bytes = 4 - Integer.numberOfLeadingZeros(value.length) / 8;
+            output.write(0x80 | bytes);
+            for (int shift = (bytes - 1) * 8; shift >= 0; shift -= 8) output.write(value.length >>> shift);
+        }
+        output.writeBytes(value);
+        return output.toByteArray();
+    }
+
+    private static byte[] concat(byte[]... values) {
+        var output = new ByteArrayOutputStream();
+        for (byte[] value : values) output.writeBytes(value);
+        return output.toByteArray();
     }
 
     GitHub asInstallation(long installation) throws Exception {

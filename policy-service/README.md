@@ -12,17 +12,18 @@ Set these environment variables before starting the service.
 | --- | --- |
 | `FORGESCOPE_APP_ID` | Numeric app ID |
 | `FORGESCOPE_INSTALLATION_ID` | Numeric installation ID |
-| `FORGESCOPE_PRIVATE_KEY_FILE` | Path to a PEM-encoded PKCS#8 private key |
+| `FORGESCOPE_PRIVATE_KEY_FILE` | Path to a PEM-encoded private key |
+| `FORGESCOPE_PRIVATE_KEY_BASE64` | Base64 of a GitHub-generated PEM; preferred for secret-backed containers |
 | `FORGESCOPE_REPOSITORIES` | Comma-separated GitHub repository names in owner/repo format |
 | `SPRING_DATASOURCE_URL` | PostgreSQL JDBC URL |
 | `SPRING_DATASOURCE_USERNAME` | Database user |
 | `SPRING_DATASOURCE_PASSWORD` | Database password |
 
-Convert a GitHub-generated key locally if the downloaded key uses PKCS#1.
+GitHub-generated PKCS#1 RSA keys and PKCS#8 keys are accepted directly. For a
+local process, keep the key in a permission-restricted file.
 
 ```sh
-openssl pkcs8 -topk8 -nocrypt -in github-app.pem -out forgescope-app.pem
-chmod 600 forgescope-app.pem
+chmod 600 github-app.pem
 mvn -f policy-service/pom.xml clean verify
 java -jar policy-service/target/policy-service-0.1.0.jar
 ```
@@ -130,9 +131,13 @@ Each token is used only with repositories the installation can access. Keep
 The worker reconciles by polling. Use a separate single-installation instance
 if you need the webhook or simulation setup documented above.
 
-On Azure Container Apps, run one replica with ingress disabled and mount the
-App private key from a secret volume as a PKCS#8 PEM. Set the JDBC connection
+On Azure Container Apps, run one replica with ingress disabled and inject the
+base64 App private key from a secret reference. Set the JDBC connection
 to an accessible PostgreSQL database using `sslmode=verify-full` and a trusted
 CA. Store database credentials as secret references. Use a database dedicated
 to the policy service. Copy the SHA and corresponding check URL from each
 phase of the live demo before enabling enforcement on a production branch.
+
+The production template and deployment notes are in
+[`infra/azure`](../infra/azure/README.md). The policy image is published to
+`ghcr.io/brunnojob/forgescope-policy` when relevant changes reach `main`.
