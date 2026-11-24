@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="../../assets/branding/*" LogicalName="ForgeScope.Brand.%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../src/main/resources/i18n.json" LogicalName="ForgeScope.i18n.json" />
     <EmbeddedResource Include="../../src/main/resources/viewer.css" LogicalName="ForgeScope.viewer.css" />
   </ItemGroup>

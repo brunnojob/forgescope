@@ -43,7 +43,16 @@ public final class Report {
     }
     public static String markdown(Map<String,Object> r){var b=new StringBuilder("# ForgeScope investigation\n\nJava 21 + .NET 10 · "+html(r.get("project"))+"\n\n");for(Object v:arr(r.get("findings"))){var f=obj(v);b.append("## ").append(html(f.get("title"))).append("\n\n").append(html(f.get("engine"))).append(" · ").append(html(f.get("path"))).append(":").append(html(f.get("line"))).append("\n\n").append(html(f.get("evidence"))).append("\n\n").append(html(f.get("action"))).append("\n\n");}return b.toString().stripTrailing()+"\n";}
     public static void save(Map<String,Object> report,Path out)throws Exception{
-        Files.createDirectories(out);write(out.resolve("report.json"),Json.write(report));write(out.resolve("report.sarif"),Json.write(sarif(report)));write(out.resolve("report.md"),markdown(report));for(String lang:List.of("en","pt-BR","es"))write(out.resolve(I18n.file(lang)),Html.render(report,lang));
+        Files.createDirectories(out);
+        Path brand=out.resolve("assets/branding");Files.createDirectories(brand);
+        for(String name:List.of("forgescope-github.png","forgescope-logo.png","favicon-32.png","apple-touch-icon.png","favicon.ico")){
+            try(var in=Report.class.getResourceAsStream("/branding/"+name)){
+                if(in==null)throw new IOException("Missing brand asset: "+name);
+                Files.copy(in,brand.resolve(name),StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
+        Files.copy(brand.resolve("favicon.ico"),out.resolve("favicon.ico"),StandardCopyOption.REPLACE_EXISTING);
+        write(out.resolve("report.json"),Json.write(report));write(out.resolve("report.sarif"),Json.write(sarif(report)));write(out.resolve("report.md"),markdown(report));for(String lang:List.of("en","pt-BR","es"))write(out.resolve(I18n.file(lang)),Html.render(report,lang));
     }
     static void write(Path file,String text)throws IOException{Path tmp=Files.createTempFile(file.toAbsolutePath().getParent(),".forgescope-",".tmp");try{Files.writeString(tmp,text);try{Files.move(tmp,file,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}catch(AtomicMoveNotSupportedException e){Files.move(tmp,file,StandardCopyOption.REPLACE_EXISTING);}}finally{Files.deleteIfExists(tmp);}}
     public static void history(Map<String,Object> report,Path database)throws Exception{

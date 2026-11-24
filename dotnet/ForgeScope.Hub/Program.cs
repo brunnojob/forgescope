@@ -117,7 +117,7 @@ public static class Program
             // A configured canonical origin prevents Host/forwarded-header spoofing in OAuth redirects.
             if (!string.Equals(ctx.Request.Host.Host, origin.Host, StringComparison.OrdinalIgnoreCase)) { ctx.Response.StatusCode = 400; return; }
             ctx.Request.Scheme = origin.Scheme; ctx.Request.Host = new HostString(origin.Authority);
-            ctx.Response.Headers.ContentSecurityPolicy = "default-src 'none'; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'";
+            ctx.Response.Headers.ContentSecurityPolicy = "default-src 'none'; img-src 'self'; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'";
             ctx.Response.Headers.XContentTypeOptions = "nosniff"; ctx.Response.Headers["Referrer-Policy"] = "no-referrer";
             ctx.Response.Headers.CacheControl = "no-store";
             try { await next(); }
@@ -131,6 +131,8 @@ public static class Program
         });
         app.UseAuthentication(); app.UseRateLimiter(); app.UseAuthorization();
         app.MapGet("/health", () => Results.Json(new { status = "ok", service = "forgescope-hub" }));
+        app.MapGet("/favicon.ico", () => ForgeScope.Workbench.BrandAssets.Get("favicon.ico"));
+        app.MapGet("/assets/branding/{name}", (string name) => ForgeScope.Workbench.BrandAssets.Get(name));
         app.MapGet("/ready", async (NpgsqlDataSource db) => { await using var cmd = db.CreateCommand("SELECT count(*) FROM forgescope.sessions WHERE false"); await cmd.ExecuteScalarAsync(); return Results.Ok(); });
         app.MapGet("/auth/github", async ctx =>
         {

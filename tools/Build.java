@@ -12,6 +12,7 @@ public class Build {
         var compiler=ToolProvider.getSystemJavaCompiler();if(compiler==null)throw new IllegalStateException("Use a full JDK 21+, not a JRE");
         compile(compiler,Path.of("src/main/java"),classes,null);
         try(var files=Files.walk(Path.of("src/main/resources"))){for(Path p:files.filter(Files::isRegularFile).toList()){Path target=classes.resolve(Path.of("src/main/resources").relativize(p));Files.createDirectories(target.getParent());Files.copy(p,target,StandardCopyOption.REPLACE_EXISTING);}}
+        try(var files=Files.walk(Path.of("assets/branding"))){for(Path p:files.filter(Files::isRegularFile).toList()){Path target=classes.resolve("branding").resolve(p.getFileName());Files.createDirectories(target.getParent());Files.copy(p,target,StandardCopyOption.REPLACE_EXISTING);}}
         try(var files=Files.walk(Path.of("third_party"))){for(Path p:files.filter(Files::isRegularFile).toList()){Path target=classes.resolve("META-INF/third-party").resolve(Path.of("third_party").relativize(p));Files.createDirectories(target.getParent());Files.copy(p,target,StandardCopyOption.REPLACE_EXISTING);}}
         Files.copy(Path.of("LICENSE"),classes.resolve("META-INF/LICENSE"),StandardCopyOption.REPLACE_EXISTING);
         var manifest=new Manifest();manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION,"1.0");manifest.getMainAttributes().put(Attributes.Name.MAIN_CLASS,"dev.forgescope.Main");manifest.getMainAttributes().put(Attributes.Name.CLASS_PATH,"lib/sqlite-jdbc.jar lib/slf4j-api.jar lib/slf4j-nop.jar");

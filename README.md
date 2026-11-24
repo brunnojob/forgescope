@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/branding/forgescope-github.png" width="112" height="112" alt="ForgeScope logo" />
+
 # ForgeScope
 
 [![ForgeScope illustrated animated walkthrough](assets/forgescope-walkthrough.gif)](https://brunnojob.github.io/forgescope/)

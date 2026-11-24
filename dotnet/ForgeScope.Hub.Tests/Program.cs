@@ -80,6 +80,17 @@ try
 {
     var store = app.Services.GetRequiredService<Store>(); await store.Migrate(); await store.Migrate(); Check(true, "idempotent isolated schema");
     await app.StartAsync(); using var anon = Client(); using var alice = Client(); using var bob = Client();
+    using (var favicon = await anon.GetAsync("/favicon.ico"))
+    {
+        var bytes = await favicon.Content.ReadAsByteArrayAsync();
+        Check(favicon.IsSuccessStatusCode && favicon.Content.Headers.ContentType?.MediaType == "image/x-icon" && bytes.Length > 100 && bytes[2] == 1, "ICO served without authentication");
+    }
+    using (var logo = await anon.GetAsync("/assets/branding/forgescope-github.png"))
+    {
+        var bytes = await logo.Content.ReadAsByteArrayAsync();
+        Check(logo.IsSuccessStatusCode && logo.Content.Headers.ContentType?.MediaType == "image/png" && bytes.Length < 1_000_000 && bytes[0] == 137, "GitHub PNG served below 1 MB");
+        Check(logo.Headers.GetValues("Content-Security-Policy").Single().Contains("img-src 'self'", StringComparison.Ordinal), "CSP permits only local brand images");
+    }
     Check((await anon.GetAsync("/repositories")).StatusCode == HttpStatusCode.Unauthorized, "anonymous repository access rejected");
     Check((await anon.PostAsync("/api/runner/claim", new StringContent("{}"))).StatusCode == HttpStatusCode.Unauthorized, "runner requires bearer");
     using (var spoof = new HttpRequestMessage(HttpMethod.Get, "/auth/github")) { spoof.Headers.Host = "evil.invalid"; Check((await anon.SendAsync(spoof)).StatusCode == HttpStatusCode.BadRequest, "spoofed Host rejected"); }
