@@ -6,3 +6,10 @@ rules:
       - 'policy-service/**'
       - '.github/workflows/**'
     approvals: 1
+  - id: live-demo-artifact
+    paths:
+      - 'live-demo/**'
+    ci:
+      workflow: demo-ci.yml
+      job: integration
+      artifact: integration-evidence
