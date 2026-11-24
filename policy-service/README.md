@@ -114,3 +114,25 @@ python3 policy-service/demo/verify.py owner/demo-repo PR_NUMBER BLOCKED_HEAD_SHA
 # After the new GitHub check passes
 python3 policy-service/demo/verify.py owner/demo-repo PR_NUMBER BLOCKED_HEAD_SHA APP_SLUG
 ```
+
+## Run the public App
+
+Build from the repository root.
+
+```sh
+docker build -f policy-service/Dockerfile -t forgescope-policy .
+```
+
+Set `FORGESCOPE_DISCOVER_INSTALLATIONS=true` for the public App. The worker
+discovers its active installations and issues a distinct token per installation.
+Each token is used only with repositories the installation can access. Keep
+`FORGESCOPE_INSTALLATION_ID` and `FORGESCOPE_REPOSITORIES` unset on this worker.
+The worker reconciles by polling. Use a separate single-installation instance
+if you need the webhook or simulation setup documented above.
+
+On Azure Container Apps, run one replica with ingress disabled and mount the
+App private key from a secret volume as a PKCS#8 PEM. Set the JDBC connection
+to an accessible PostgreSQL database using `sslmode=verify-full` and a trusted
+CA. Store database credentials as secret references. Use a database dedicated
+to the policy service. Copy the SHA and corresponding check URL from each
+phase of the live demo before enabling enforcement on a production branch.

@@ -77,6 +77,29 @@ class PolicyFlowTest {
     }
 
     @Test
+    void pollsRepositoriesUsingTheirOwnInstallationToken() throws Exception {
+        var app = mock(GitHub.class);
+        var first = mock(GitHub.class);
+        var second = mock(GitHub.class);
+        when(app.list("/app/installations", null)).thenReturn(rows("""
+            [{"id":1},{"id":2},{"id":3,"suspended_at":"2026-01-01"}]
+            """));
+        when(app.asInstallation(1)).thenReturn(first);
+        when(app.asInstallation(2)).thenReturn(second);
+        when(first.list("/installation/repositories", "repositories")).thenReturn(rows("""
+            [{"full_name":"alpha/one"},{"full_name":"alpha/archived","archived":true}]
+            """));
+        when(second.list("/installation/repositories", "repositories")).thenReturn(rows("""
+            [{"full_name":"beta/two"}]
+            """));
+        new PolicyService(mock(JdbcTemplate.class)).reconcileInstallations(app, "42");
+        verify(first).list("/repos/alpha/one/pulls?state=open", null);
+        verify(second).list("/repos/beta/two/pulls?state=open", null);
+        verify(app, never()).asInstallation(3);
+        verifyNoMoreInteractions(first, second);
+    }
+
+    @Test
     void verifiesRawWebhookSignatureAndRejectsTampering() {
         String signature = "sha256=f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8";
         var original = "The quick brown fox jumps over the lazy dog".getBytes(StandardCharsets.UTF_8);
