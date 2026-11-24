@@ -91,19 +91,45 @@ public class PolicyService {
     @Scheduled(fixedDelayString = "${forgescope.poll-ms:60000}")
     public void reconcile() {
         try {
-            var github = connect();
-            for (String configured : required("FORGESCOPE_REPOSITORIES").split(",")) {
-                String repo = repository(configured.strip());
-                try {
-                    for (JsonNode pr : github.list("/repos/" + repo + "/pulls?state=open", null)) {
-                        int number = pr.required("number").asInt();
-                        try { evaluate(github, repo, number, required("FORGESCOPE_APP_ID")); }
-                        catch (Exception error) { LOG.warn("Evaluation failed for {} #{} ({})", repo, number, error.getMessage()); }
-                    }
-                } catch (Exception error) { LOG.warn("Repository scan failed for {} ({})", repo, error.getMessage()); }
+            String appId = required("FORGESCOPE_APP_ID");
+            if (Boolean.parseBoolean(System.getenv("FORGESCOPE_DISCOVER_INSTALLATIONS"))) {
+                var app = GitHub.app(appId, Files.readString(Path.of(required("FORGESCOPE_PRIVATE_KEY_FILE"))));
+                reconcileInstallations(app, appId);
+            } else {
+                var github = connect();
+                for (String configured : required("FORGESCOPE_REPOSITORIES").split(","))
+                    reconcileRepository(github, repository(configured.strip()), appId);
             }
         } catch (Exception error) {
             LOG.warn("GitHub App reconciliation unavailable ({})", error.getClass().getSimpleName());
+        }
+    }
+
+    void reconcileInstallations(GitHub app, String appId) throws Exception {
+        for (JsonNode installation : app.list("/app/installations", null)) {
+            if (installation.hasNonNull("suspended_at")) continue;
+            long id = installation.required("id").asLong();
+            try {
+                var client = app.asInstallation(id);
+                for (JsonNode item : client.list("/installation/repositories", "repositories")) {
+                    if (item.path("archived").asBoolean() || item.path("disabled").asBoolean()) continue;
+                    reconcileRepository(client, repository(item.required("full_name").asText()), appId);
+                }
+            } catch (Exception error) {
+                LOG.warn("Installation scan failed for {} ({})", id, error.getClass().getSimpleName());
+            }
+        }
+    }
+
+    private void reconcileRepository(GitHub github, String repo, String appId) {
+        try {
+            for (JsonNode pr : github.list("/repos/" + repo + "/pulls?state=open", null)) {
+                int number = pr.required("number").asInt();
+                try { evaluate(github, repo, number, appId); }
+                catch (Exception error) { LOG.warn("Evaluation failed for {} #{} ({})", repo, number, error.getClass().getSimpleName()); }
+            }
+        } catch (Exception error) {
+            LOG.warn("Repository scan failed for {} ({})", repo, error.getClass().getSimpleName());
         }
     }
 

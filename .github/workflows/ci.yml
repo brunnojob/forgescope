@@ -44,3 +44,41 @@ jobs:
             dotnet/ForgeScope.Workbench/bin/Release/net10.0/
             .forgescope/report.json
             .forgescope/report.sarif
+  policy-service:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: forgescope_test
+          POSTGRES_USER: forgescope
+          POSTGRES_PASSWORD: ci-only-password
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U forgescope -d forgescope_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: policy-service/pom.xml
+      - name: Verify merge policy and PostgreSQL audit
+        run: mvn -B -f policy-service/pom.xml verify
+        env:
+          FORGESCOPE_TEST_JDBC_URL: jdbc:postgresql://127.0.0.1:${{ job.services.postgres.ports[5432] }}/forgescope_test
+          FORGESCOPE_TEST_JDBC_USER: forgescope
+          FORGESCOPE_TEST_JDBC_PASSWORD: ci-only-password
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forgescope-policy-service
+          path: |
+            policy-service/target/policy-service-*.jar
+            policy-service/target/surefire-reports/

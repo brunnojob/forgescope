@@ -18,7 +18,11 @@ final class GitHub {
     GitHub(String token) { this.token = token; }
 
     static GitHub installation(String app, long installation, String pem) throws Exception {
-        if (!app.matches("[0-9]+") || installation < 1) throw new IllegalArgumentException("Invalid App configuration");
+        return app(app, pem).asInstallation(installation);
+    }
+
+    static GitHub app(String app, String pem) throws Exception {
+        if (!app.matches("[0-9]+")) throw new IllegalArgumentException("Invalid App ID");
         var key = KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(
             Base64.getDecoder().decode(pem.replace("-----BEGIN PRIVATE KEY-----", "")
                 .replace("-----END PRIVATE KEY-----", "").replaceAll("\\s", ""))));
@@ -31,7 +35,12 @@ final class GitHub {
         signature.initSign(key);
         signature.update(claims.getBytes(java.nio.charset.StandardCharsets.US_ASCII));
         String jwt = claims + "." + encoder.encodeToString(signature.sign());
-        JsonNode result = new GitHub(jwt).request("POST", "/app/installations/" + installation + "/access_tokens", Map.of());
+        return new GitHub(jwt);
+    }
+
+    GitHub asInstallation(long installation) throws Exception {
+        if (installation < 1) throw new IllegalArgumentException("Invalid installation ID");
+        JsonNode result = request("POST", "/app/installations/" + installation + "/access_tokens", Map.of());
         return new GitHub(result.required("token").asText());
     }
 
