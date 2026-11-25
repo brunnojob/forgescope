@@ -1,5 +1,7 @@
 using System.IO.Compression;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Security.Cryptography;
 
 namespace ForgeScope.Hub;
@@ -54,6 +56,18 @@ public static class SourceImport
                 string path = Path.Combine(root, name); Directory.CreateDirectory(Path.GetDirectoryName(path)!); await File.WriteAllBytesAsync(path, data, ct); title = name;
             }
             var report = await analyzer.Scan(root, "", "", temp, ct);
+            if (file is null)
+            {
+                var scoped = JsonNode.Parse(report.GetRawText())!.AsObject();
+                var findings = scoped["findings"]!.AsArray();
+                foreach (var finding in findings.ToArray())
+                {
+                    string rule = finding?["rule"]?.GetValue<string>() ?? "";
+                    if (rule.StartsWith("docs.", StringComparison.Ordinal) || rule.StartsWith("tests.match:", StringComparison.Ordinal) || rule is "ci.missing" or "license.missing") findings.Remove(finding);
+                }
+                scoped["input_scope"] = "snippet";
+                report = JsonSerializer.SerializeToElement(scoped);
+            }
             var value = new Investigation { OwnerId = owner, Origin = "local", Repository = "local/source", Title = title[..Math.Min(title.Length, 200)],
                 Commit = Convert.ToHexStringLower(digest.GetHashAndReset()), Report = report };
             value.Event(owner, "analyzed", value.Commit); return value;

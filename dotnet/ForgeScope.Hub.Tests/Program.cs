@@ -211,6 +211,7 @@ try
         Guid localId = Guid.Parse(pasted.Headers.Location!.ToString().Split('/')[2].Split('?')[0]);
         var local = (await store.Get("202", localId))!;
         Check(local.Origin == "local" && local.Commit.Length == 64 && local.Report.GetProperty("findings").ValueKind == JsonValueKind.Array, "local report has source digest and honest origin");
+        Check(local.Report.GetProperty("input_scope").GetString() == "snippet" && !local.Report.GetProperty("findings").EnumerateArray().Any(f => f.GetProperty("rule").GetString() is "docs.readme" or "ci.missing" or "license.missing"), "isolated snippet does not inherit missing repository metadata warnings");
         string detail = await bob.GetStringAsync(pasted.Headers.Location);
         Check(detail.Contains("Análise de código local", StringComparison.Ordinal) && !detail.Contains("github.com/local/source/blob", StringComparison.Ordinal), "local results have no fabricated GitHub source links");
         Check((await alice.GetAsync(pasted.Headers.Location)).StatusCode == HttpStatusCode.NotFound, "local reports isolated by account");
