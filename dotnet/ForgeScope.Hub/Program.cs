@@ -85,6 +85,21 @@ public static class Program
                 if (githubTransport is not null) o.Backchannel = new HttpClient(githubTransport, disposeHandler: false);
                 o.Events = new OAuthEvents
                 {
+                    OnRedirectToAuthorizationEndpoint = ctx =>
+                    {
+                        if (ctx.Properties.Items.ContainsKey("notifications"))
+                        {
+                            string scope = config["FORGESCOPE_PRIVATE_REPOS"] == "true" ? "read:user repo notifications" : "read:user notifications";
+                            var redirect = Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(ctx.RedirectUri, "scope", scope);
+                            // Replace the original scope rather than sending duplicate scope parameters.
+                            var uri = new Uri(ctx.RedirectUri); var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+                            query["scope"] = scope;
+                            redirect = Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(uri.GetLeftPart(UriPartial.Path), query.SelectMany(x => x.Value.Select(v => new KeyValuePair<string,string?>(x.Key,v))));
+                            ctx.Response.Redirect(redirect);
+                        }
+                        else ctx.Response.Redirect(ctx.RedirectUri);
+                        return Task.CompletedTask;
+                    },
                     OnCreatingTicket = async ctx =>
                     {
                         var services = ctx.HttpContext.RequestServices;
@@ -108,6 +123,14 @@ public static class Program
         builder.Services.AddRateLimiter(o =>
         {
             o.RejectionStatusCode = 429;
+            o.OnRejected = async (context, ct) =>
+            {
+                context.HttpContext.Response.StatusCode = 429;
+                var retry = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var wait) ? Math.Max(1, (int)Math.Ceiling(wait.TotalSeconds)) : 60;
+                context.HttpContext.Response.Headers.RetryAfter = retry.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                context.HttpContext.Response.ContentType = "text/html; charset=utf-8";
+                await context.HttpContext.Response.WriteAsync(Views.ErrorPage(context.HttpContext, 429), ct);
+            };
             o.AddPolicy("scan", ctx => RateLimitPartition.GetFixedWindowLimiter(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous",
                 _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(5), QueueLimit = 0 }));
             o.AddPolicy("login", ctx => RateLimitPartition.GetFixedWindowLimiter(ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -119,7 +142,7 @@ public static class Program
             // A configured canonical origin prevents Host/forwarded-header spoofing in OAuth redirects.
             if (!string.Equals(ctx.Request.Host.Host, origin.Host, StringComparison.OrdinalIgnoreCase)) { ctx.Response.StatusCode = 400; return; }
             ctx.Request.Scheme = origin.Scheme; ctx.Request.Host = new HostString(origin.Authority);
-            ctx.Response.Headers.ContentSecurityPolicy = "default-src 'none'; img-src 'self'; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'";
+            ctx.Response.Headers.ContentSecurityPolicy = "default-src 'none'; img-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'";
             ctx.Response.Headers.XContentTypeOptions = "nosniff"; ctx.Response.Headers["Referrer-Policy"] = "no-referrer";
             ctx.Response.Headers.CacheControl = "no-store";
             try { await next(); }
@@ -133,6 +156,7 @@ public static class Program
         });
         app.UseAuthentication(); app.UseRateLimiter(); app.UseAuthorization();
         app.MapNotifications();
+        app.MapGet("/assets/hub.js", () => Results.Text(HubInteraction.Script, "text/javascript; charset=utf-8"));
         app.MapGet("/health", () => Results.Json(new { status = "ok", service = "forgescope-hub" }));
         app.MapGet("/favicon.ico", () => ForgeScope.Workbench.BrandAssets.Get("favicon.ico"));
         app.MapGet("/assets/branding/{name}", (string name) => ForgeScope.Workbench.BrandAssets.Get(name));
@@ -143,6 +167,12 @@ public static class Program
             { ctx.Response.StatusCode = 503; await WriteError(ctx, 503, "Configure the GitHub OAuth application before signing in"); return; }
             string lang = Views.Language(ctx); await ctx.ChallengeAsync("github", new AuthenticationProperties { RedirectUri = "/?lang=" + lang });
         }).RequireRateLimiting("login");
+        app.MapGet("/auth/github/notifications", async ctx =>
+        {
+            var properties = new AuthenticationProperties { RedirectUri = "/notifications?lang=" + Views.Language(ctx) };
+            properties.Items["notifications"] = "true";
+            await ctx.ChallengeAsync("github", properties);
+        }).RequireAuthorization().RequireRateLimiting("login");
         app.MapGet("/", async (HttpContext ctx, Store store, IAntiforgery csrf) =>
         {
             var rows = ctx.User.Identity?.IsAuthenticated == true ? await store.List(UserId(ctx)) : [];
@@ -150,7 +180,7 @@ public static class Program
         });
         app.MapPost("/logout", async (HttpContext ctx, Store store, IAntiforgery csrf) =>
         { await csrf.ValidateRequestAsync(ctx); await store.Logout(ctx.User.FindFirstValue("session_id")!); await ctx.SignOutAsync("session"); return Results.Redirect("/"); }).RequireAuthorization();
-        app.MapGet("/catalog", (HttpContext ctx, IAntiforgery csrf) => Html(Views.Catalog(ctx, csrf.GetAndStoreTokens(ctx).RequestToken!))).RequireAuthorization();
+        app.MapGet("/catalog", async (HttpContext ctx, Store store, IAntiforgery csrf) => Html(Views.Catalog(ctx, csrf.GetAndStoreTokens(ctx).RequestToken!, ctx.User.Identity?.IsAuthenticated == true ? await store.List(UserId(ctx)) : [])));
         app.MapGet("/repositories", async (HttpContext ctx, Store store, GitHub github, IDataProtectionProvider protection, IAntiforgery csrf) =>
         {
             int page = int.TryParse(ctx.Request.Query["page"], out var p) ? Math.Clamp(p, 1, 1000) : 1;
@@ -195,7 +225,13 @@ public static class Program
         }).RequireAuthorization();
         app.MapGet("/investigations/{id:guid}/export", async (Guid id, HttpContext ctx, Store store) =>
         {
-            var value = await store.Get(UserId(ctx), id); return value is null ? Results.NotFound() : Results.File(JsonSerializer.SerializeToUtf8Bytes(value), "application/json", "forgescope-investigation.json");
+            var value = await store.Get(UserId(ctx), id); if (value is null) return Results.NotFound();
+            return ctx.Request.Query["format"].ToString() switch
+            {
+                "markdown" => Results.File(Encoding.UTF8.GetBytes(HubExports.Markdown(value)), "text/markdown; charset=utf-8", "forgescope-investigation.md"),
+                "sarif" => Results.File(HubExports.Sarif(value), "application/sarif+json", "forgescope-investigation.sarif"),
+                _ => Results.File(JsonSerializer.SerializeToUtf8Bytes(value), "application/json", "forgescope-investigation.json")
+            };
         }).RequireAuthorization();
         app.MapPost("/investigations/{id:guid}/{action}", async (Guid id, string action, HttpContext ctx, Store store, IAntiforgery csrf) =>
         {

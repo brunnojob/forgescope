@@ -15,7 +15,11 @@ public sealed class GitHub(HttpClient http)
         request.Headers.UserAgent.ParseAdd("ForgeScope/0.4"); request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         request.Headers.Accept.ParseAdd(accept); request.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
         using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-        if (!response.IsSuccessStatusCode) throw new InvalidOperationException($"GitHub returned HTTP {(int)response.StatusCode}; check access and rate limits");
+        if (!response.IsSuccessStatusCode)
+        {
+            bool limited = response.StatusCode == System.Net.HttpStatusCode.Forbidden && (response.Headers.RetryAfter is not null || response.Headers.TryGetValues("X-RateLimit-Remaining", out var remaining) && remaining.Contains("0"));
+            throw new GitHubApiException(limited ? 429 : (int)response.StatusCode);
+        }
         if (response.Content.Headers.ContentLength > limit) throw new InvalidOperationException("GitHub input exceeds the supported limit");
         using var stream = await response.Content.ReadAsStreamAsync(ct); using var data = new MemoryStream();
         var buffer = new byte[16_384]; int read;

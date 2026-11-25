@@ -1,0 +1,17 @@
+# GitHub inbox and guided web workflow
+
+The web Notification dashboard contains the connected user's GitHub inbox first, project recommendations next, and repository CI alerts below. These have different sources and read-state semantics.
+
+The inbox calls GET /notifications?all=true&per_page=50&page=N with the encrypted OAuth token belonging to the current session. It includes the read/unread items and thread subjects that GitHub retains and returns, with pagination. It is not a global list of every PR, merge or commit. Up to ten pull-request subjects per page have their current state checked; details unavailable due to access or rate limits are not invented. Thread titles remain in their original language. There is no automatic mark-read, subscription mutation, or forwarding to third-party tools.
+
+The basic GitHub login still requests read:user (and the existing configured repo scope if enabled). Users missing notification permission see an explicit **Authorize GitHub notifications** action. That action starts the existing PKCE OAuth flow with the additional notifications scope and returns to the inbox. GitHub displays consent. The notifications scope includes read access and subscription/read-state capabilities, but this implementation uses GET only. Existing user sessions do not silently acquire broader access. The permission upgrade creates a normal new session with the same expiry and encrypted server-side token storage. Never ask users to paste tokens into the UI.
+
+Missing permission does not block CI alerts. API rate limits are distinguished from permission errors when GitHub supplies rate-limit metadata. The inbox has no persistent title cache and is fetched when the page is requested. Repository watches retain their bounded two-minute polling behavior.
+
+RevScope is a public catalog, with private project recommendations added for signed-in users. Recommendations use saved artifact tool_ids and match against the embedded official catalog. Each recommendation names the project, artifact path and format evidence. Module findings also provide a direct route to the saved evidence. No suggested tool is installed, launched or sent project files. DevRescue is already included as the Java port of its recognizable failure rules and is now named in next-check panels and module explanations; this is not a claim that all features of the separate DevRescue application run here.
+
+Overview explains PatchScope, CIFuse, RepoRelief, DevRescue, RevScope and Exports before sign-in. The interactive tour uses a same-origin script permitted by a self-only script CSP: seven steps, progress, back/next, Escape/close, keyboard arrows, focus restoration and a practice diagnostic. Example interactions do not submit scans. Public GitHub Pages now labels its link as the web platform and tour instead of implying that its sample is a live GitHub session.
+
+The ZIP picker uses translated visible labels and a selected filename status instead of native file-input text. The operating system file dialog still follows the user's browser/OS language. Scan forms prevent duplicate submission. Rejected scans keep HTTP 429 and Retry-After, with localized HTML and a countdown rather than a blank browser error.
+
+The Hub exports full investigations as JSON and findings as Markdown or SARIF 2.1.0. Downloads remain account-scoped. No new production database migration is needed for these changes.

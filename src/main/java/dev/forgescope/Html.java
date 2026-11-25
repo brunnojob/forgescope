@@ -17,7 +17,7 @@ public final class Html {
         try {
             var uri=java.net.URI.create(value);
             if(!"https".equals(uri.getScheme())||uri.getHost()==null||uri.getUserInfo()!=null||uri.getQuery()!=null||uri.getFragment()!=null)return "";
-            String label=switch(language){case "pt-BR"->"Entrar com GitHub";case "es"->"Entrar con GitHub";default->"Sign in with GitHub";};
+            String label=switch(language){case "pt-BR"->"Abrir plataforma web e tour";case "es"->"Abrir plataforma web y tour";default->"Open web platform and tour";};
             return "<a class=\"button primary\" href=\""+html(value.replaceAll("/+$","")+"/?lang="+language)+"\">"+label+" →</a>";
         }catch(IllegalArgumentException e){return "";}
     }

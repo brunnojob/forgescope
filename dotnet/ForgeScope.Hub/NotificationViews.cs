@@ -2,13 +2,16 @@ namespace ForgeScope.Hub;
 
 public static partial class Views
 {
-    public static string Inbox(HttpContext ctx, string token, List<Alert> alerts, List<RepoWatch> watches)
+    public static string Inbox(HttpContext ctx, string token, List<Alert> alerts, List<RepoWatch> watches, GitHubInbox? githubInbox = null, List<Investigation>? investigations = null)
     {
         var p = new Page(ctx, token); var b = p.Body;
         string filter = ctx.Request.Query["filter"].ToString(), repo = ctx.Request.Query["repository"].ToString(), q = ctx.Request.Query["q"].ToString();
         string Link(string f = "", string r = "") => $"/notifications?lang={p.Lang}&amp;filter={Uri.EscapeDataString(f)}&amp;repository={Uri.EscapeDataString(r)}";
         b.Append("<style>.inbox-layout{display:grid;grid-template-columns:230px 1fr;gap:24px}.inbox-filters a{display:block;padding:10px 0}.inbox-row{border:1px solid var(--line);border-bottom:0;padding:18px;background:var(--panel)}.inbox-row:last-child{border-bottom:1px solid var(--line)}.inbox-row.unread{border-left:4px solid var(--accent)}.inbox-row h2{font-size:17px;margin:10px 0}.inbox-row form{display:inline-block;margin:8px 8px 0 0}.inbox-row button{font-size:13px;padding:6px 10px}.inbox-row pre{max-height:400px;overflow:auto}.watch{border-top:1px solid var(--line);padding-top:12px}.watch form{margin:10px 0}select{padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--line)}@media(max-width:1000px){.inbox-layout{grid-template-columns:1fr}.inbox-filters{display:flex;gap:12px;flex-wrap:wrap}}</style>");
-        b.Append($"<div class=\"eyebrow\">FORGESCOPE</div><h1>{p.T("Error dashboard", "Painel de erros", "Panel de errores")}</h1><p>{p.T("CI failures across your repositories, with the diagnostic GitHub actually reported.", "Falhas de CI nos seus repositórios, com o diagnóstico que o GitHub realmente informou.", "Fallos de CI de tus repositorios, con el diagnóstico que GitHub realmente informó.")}</p><div class=\"inbox-layout\"><section class=\"inbox-filters\">");
+        b.Append($"<div class=\"eyebrow\">FORGESCOPE</div><h1>{p.T("Notification dashboard", "Painel de Notificações", "Panel de notificaciones")}</h1>");
+        AccountInbox(p, githubInbox ?? new([], 1, false, "permission"));
+        Recommendations(p, investigations ?? []);
+        b.Append($"<section id=\"repository-monitoring\"><h2>{p.T("Repository errors and monitoring", "Erros e monitoramento dos repositórios", "Errores y monitoreo de repositorios")}</h2><p>{p.T("Choose repositories below to collect failed workflow diagnostics in addition to your GitHub inbox.", "Escolha repositórios abaixo para coletar diagnósticos de workflows com falha, além da sua caixa do GitHub.", "Elige repositorios para recopilar diagnósticos además de tu bandeja.")}</p><div class=\"inbox-layout\"><section class=\"inbox-filters\">");
         foreach (var (f, label) in new[] { ("", p.T("Inbox", "Caixa de entrada", "Bandeja de entrada")), ("unread", p.T("Unread", "Não lidas", "No leídas")), ("saved", p.T("Saved", "Salvas", "Guardadas")), ("done", p.T("Done", "Concluídas", "Completadas")) })
             b.Append($"<a href=\"{Link(f)}\"{(filter == f ? " aria-current=\"page\"" : "")}>{label} <span class=\"badge\">{alerts.Count(a => f switch { "unread" => !a.Read && !a.Done, "saved" => a.Saved, "done" => a.Done, _ => !a.Done })}</span></a>");
         b.Append($"<h3>{p.T("Monitored repositories", "Repositórios monitorados", "Repositorios monitoreados")}</h3>");
@@ -53,6 +56,6 @@ public static partial class Views
             }
             b.Append("</article>");
         }
-        b.Append("</section></div>"); return p.ToString();
+        b.Append("</section></div></section>"); return p.ToString();
     }
 }

@@ -9,8 +9,14 @@ public static class NotificationRoutes
 {
     public static void MapNotifications(this WebApplication app)
     {
-        app.MapGet("/notifications", async (HttpContext ctx, Store store, IAntiforgery csrf) =>
-            Results.Content(Views.Inbox(ctx, csrf.GetAndStoreTokens(ctx).RequestToken!, await store.Notifications(Owner(ctx)), await store.Watches(Owner(ctx))), "text/html; charset=utf-8")).RequireAuthorization();
+        app.MapGet("/notifications", async (HttpContext ctx, Store store, GitHub github, IDataProtectionProvider protection, IAntiforgery csrf) =>
+        {
+            var session = await store.Session(ctx.User.FindFirstValue("session_id")!) ?? throw new KeyNotFoundException();
+            int page = int.TryParse(ctx.Request.Query["ghpage"], out var requested) ? Math.Clamp(requested, 1, 1000) : 1;
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ctx.RequestAborted); deadline.CancelAfter(TimeSpan.FromSeconds(20));
+            var inbox = await GitHubNotifications.Load(github, protection.CreateProtector("github-token-v1").Unprotect(session.ProtectedToken), page, deadline.Token);
+            return Results.Content(Views.Inbox(ctx, csrf.GetAndStoreTokens(ctx).RequestToken!, await store.Notifications(Owner(ctx)), await store.Watches(Owner(ctx)), inbox, await store.List(Owner(ctx))), "text/html; charset=utf-8");
+        }).RequireAuthorization();
         app.MapPost("/notifications/watch", async (HttpContext ctx, Store store, GitHub github, IDataProtectionProvider protection, IAntiforgery csrf) =>
         {
             await csrf.ValidateRequestAsync(ctx); var form = await ctx.Request.ReadFormAsync(); string repo = Investigation.RepositoryName(form["repository"].ToString()).ToLowerInvariant();

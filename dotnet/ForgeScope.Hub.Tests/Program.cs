@@ -119,6 +119,24 @@ try
     Check((await anon.PostAsync("/api/runner/claim", new StringContent("{}"))).StatusCode == HttpStatusCode.Unauthorized, "runner requires bearer");
     using (var spoof = new HttpRequestMessage(HttpMethod.Get, "/auth/github")) { spoof.Headers.Host = "evil.invalid"; Check((await anon.SendAsync(spoof)).StatusCode == HttpStatusCode.BadRequest, "spoofed Host rejected"); }
     await SignIn(alice, "alice"); await SignIn(bob, "bob"); Check(fake.PkceExchanged, "verifier exchanged on server");
+    using (var scopeRequest = await bob.GetAsync("/auth/github/notifications?lang=pt-BR"))
+    {
+        var scope = QueryHelpers.ParseQuery(scopeRequest.Headers.Location!.Query);
+        Check(scope["scope"].ToString().Split(' ').Contains("notifications") && scope["code_challenge_method"] == "S256", "notification permission upgrade uses OAuth PKCE and explicit scope");
+    }
+    string notices = await alice.GetStringAsync("/notifications?lang=pt-BR");
+    Check(notices.Contains("Fixture merged PR", StringComparison.Ordinal) && notices.Contains("Merge realizado", StringComparison.Ordinal), "GitHub inbox includes PR state from subject API");
+    Check(notices.IndexOf("Suas notificações do GitHub", StringComparison.Ordinal) < notices.IndexOf("Erros e monitoramento", StringComparison.Ordinal), "GitHub inbox precedes repository monitoring");
+    string bobNotices = await bob.GetStringAsync("/notifications?lang=en");
+    Check(bobNotices.Contains("Bob private title", StringComparison.Ordinal) && !bobNotices.Contains("Fixture merged PR", StringComparison.Ordinal), "provider inbox uses each signed-in user's token");
+    fake.DenyNotifications = true;
+    string deniedInbox = await alice.GetStringAsync("/notifications?lang=pt-BR");
+    Check(deniedInbox.Contains("Autorizar notificações do GitHub", StringComparison.Ordinal) && deniedInbox.Contains("Erros e monitoramento", StringComparison.Ordinal), "missing notifications scope keeps monitoring available with opt-in authorization");
+    fake.DenyNotifications = false;
+    string publicHome = await anon.GetStringAsync("/?lang=en");
+    Check(publicHome.Contains("Choose file", StringComparison.Ordinal) == false && publicHome.Contains("Start interactive tour", StringComparison.Ordinal) && publicHome.Contains("DevRescue", StringComparison.Ordinal), "module introduction and interactive tour available before sign-in");
+    using (var script = await anon.GetAsync("/assets/hub.js")) Check(script.IsSuccessStatusCode && script.Content.Headers.ContentType?.MediaType == "text/javascript", "same-origin interactive script served anonymously");
+    Check((await anon.GetAsync("/catalog?lang=en")).IsSuccessStatusCode, "RevScope tool catalog available without sign-in");
     using (var command = app.Services.GetRequiredService<NpgsqlDataSource>().CreateCommand("SELECT xml FROM forgescope.data_protection_keys LIMIT 1"))
     {
         string key = (string)(await command.ExecuteScalarAsync())!;
@@ -149,7 +167,7 @@ try
     foreach (string theme in new[] { "black", "dark", "light" })
     {
         string panel = await alice.GetStringAsync($"/notifications?lang=pt-BR&theme={theme}&filter=unread&repository=fixture%2Frepo&q=TS2304");
-        Check(panel.Contains($"body class=\"{theme}\"", StringComparison.Ordinal) && panel.Contains("Painel de erros", StringComparison.Ordinal), "localized error dashboard uses selected theme");
+        Check(panel.Contains($"body class=\"{theme}\"", StringComparison.Ordinal) && panel.Contains("Painel de Notificações", StringComparison.Ordinal), "localized error dashboard uses selected theme");
         Check(panel.Contains("Diagnóstico original", StringComparison.Ordinal) && panel.Contains("O que verificar", StringComparison.Ordinal) && panel.Contains("TS2304", StringComparison.Ordinal), "localized guidance preserves original diagnostic");
         string settingsHref = WebUtility.HtmlDecode(Regex.Match(panel, "href=\"([^\"]+)\" lang=\"en\"").Groups[1].Value);
         var query = QueryHelpers.ParseQuery(new Uri(new Uri(origin), settingsHref).Query);
@@ -177,6 +195,9 @@ try
     var id = Guid.Parse(created.Headers.Location!.ToString().Split('/')[2].Split('?')[0]);
     Check((await bob.GetAsync($"/investigations/{id}")).StatusCode == HttpStatusCode.NotFound, "cross-account isolation");
     Check((await bob.GetAsync($"/investigations/{id}/export")).StatusCode == HttpStatusCode.NotFound, "cross-account export isolation");
+    using (var md = await alice.GetAsync($"/investigations/{id}/export?format=markdown")) Check(md.IsSuccessStatusCode && md.Content.Headers.ContentDisposition?.FileNameStar == "forgescope-investigation.md" && (await md.Content.ReadAsStringAsync()).Contains("# ForgeScope investigation", StringComparison.Ordinal), "Markdown findings export");
+    using (var sarif = await alice.GetAsync($"/investigations/{id}/export?format=sarif"))
+    { using var doc = JsonDocument.Parse(await sarif.Content.ReadAsStringAsync()); Check(sarif.IsSuccessStatusCode && doc.RootElement.GetProperty("version").GetString() == "2.1.0" && doc.RootElement.GetProperty("runs")[0].GetProperty("results").GetArrayLength() > 0, "SARIF findings export"); }
     var before = await Form(alice, id); Check(!before.Html.Contains("fake-token", StringComparison.Ordinal), "no provider token in HTML");
     Check(fake.LogDownloadWithoutToken && before.Html.Contains("different commit", StringComparison.Ordinal), "CI signed download strips bearer and mismatched SHA is disclosed");
     Check(before.Html.Contains("PatchScope", StringComparison.OrdinalIgnoreCase) && before.Html.Contains("PlanRelay", StringComparison.Ordinal), "analysis and review in one page");
@@ -201,7 +222,7 @@ try
     foreach (var lang in new[] { "pt-BR", "es", "en" }) { var html = await alice.GetStringAsync($"/investigations/{id}?lang={lang}"); Check(html.Contains("lang=\"" + lang + "\"", StringComparison.Ordinal) && !html.Contains("<script>unsafe</script>", StringComparison.Ordinal), "locale and escaped review content"); }
     await Post(alice, id, "revise", new() { ["plan"] = "Changed scope", ["patch"] = patch }); Check((await store.Get("101", id))!.Stage == "review", "new revision invalidates readiness");
     string home = await bob.GetStringAsync("/?lang=pt-BR&theme=black");
-    Check(home.Contains("Analisar ZIP", StringComparison.Ordinal) && home.Contains("Demonstração guiada", StringComparison.Ordinal) && !home.Contains("#97efc2", StringComparison.Ordinal), "welcoming localized upload and tour with blue branding");
+    Check(home.Contains("Analisar ZIP", StringComparison.Ordinal) && home.Contains("Tour guiado interativo", StringComparison.Ordinal) && !home.Contains("#97efc2", StringComparison.Ordinal), "welcoming localized upload and tour with blue branding");
     string bobCsrf = WebUtility.HtmlDecode(Regex.Match(home, "name=\"__RequestVerificationToken\" value=\"([^\"]+)\"").Groups[1].Value);
     using (var uploadDenied = await anon.PostAsync("/source", new FormUrlEncodedContent(new Dictionary<string, string>()))) Check(uploadDenied.StatusCode == HttpStatusCode.Unauthorized, "source upload requires authentication");
     using (var uploadCsrf = await bob.PostAsync("/source", new FormUrlEncodedContent(new Dictionary<string, string> { ["filename"] = "example.py", ["code"] = "print('hello')" }))) Check(uploadCsrf.StatusCode == HttpStatusCode.Forbidden, "source upload requires CSRF");
@@ -232,6 +253,15 @@ try
     string grouped = Views.Inbox(viewCtx, "fixture", [processStatus, rateLimit], []);
     Check(grouped.IndexOf("Dependency download HTTP 429", StringComparison.Ordinal) < grouped.IndexOf("Process completed with exit code 1.", StringComparison.Ordinal) && !grouped.Contains(".github:13", StringComparison.Ordinal), "specific diagnostic precedes generic status without fabricated source location");
     Check(grouped.Contains("Retry-After", StringComparison.Ordinal) && grouped.Contains("target=\"_blank\"", StringComparison.Ordinal), "rate-limit explanation in dashboard and external evidence opens new tab");
+    string englishHome = await bob.GetStringAsync("/?lang=en");
+    Check(englishHome.Contains("Choose file", StringComparison.Ordinal) && englishHome.Contains("No file selected", StringComparison.Ordinal) && englishHome.Contains("data-file-input", StringComparison.Ordinal) && englishHome.Contains("id=\"guided-tour\"", StringComparison.Ordinal), "localized custom picker and interactive tour markup");
+    using (var fifth = await bob.PostAsync("/source", new FormUrlEncodedContent(new Dictionary<string,string> { ["__RequestVerificationToken"] = bobCsrf }))) Check(fifth.StatusCode == HttpStatusCode.Conflict, "invalid scan rejected before analysis");
+    using (var limited = await bob.PostAsync("/source?lang=pt-BR", new FormUrlEncodedContent(new Dictionary<string,string> { ["__RequestVerificationToken"] = bobCsrf })))
+    { string limitedHtml = await limited.Content.ReadAsStringAsync(); Check(limited.StatusCode == HttpStatusCode.TooManyRequests && limited.Headers.RetryAfter is not null && limitedHtml.Contains("Muitas solicitações", StringComparison.Ordinal) && limitedHtml.Contains("data-retry", StringComparison.Ordinal), "rate-limit response is localized HTML with retry countdown"); }
+    var artifactReport = JsonSerializer.SerializeToElement(new { findings = Array.Empty<object>(), artifacts = new { signals = new[] { new { path = "captures/request.pcap", kind = "Recognized capture header", verification = "pcap header", notes = "Use a packet viewer only on authorized captures.", tool_ids = new[] { "wireshark" } } } } });
+    var recommendationCtx = new Microsoft.AspNetCore.Http.DefaultHttpContext(); recommendationCtx.Request.QueryString = new("?lang=pt-BR");
+    string recommendations = Views.Catalog(recommendationCtx, "", [new Investigation { Title="Artifact fixture", Report=artifactReport }]);
+    Check(recommendations.Contains("Wireshark", StringComparison.Ordinal) && recommendations.Contains("captures/request.pcap", StringComparison.Ordinal) && recommendations.Contains("Ver evidência da indicação", StringComparison.Ordinal), "RevScope recommendation ties the catalog tool to project artifact evidence");
     var latest = await Form(alice, id);
     using var logout = await alice.PostAsync("/logout", new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = latest.Token })); Check(logout.StatusCode == HttpStatusCode.Redirect, "logout");
     Check((await alice.GetAsync($"/investigations/{id}")).StatusCode == HttpStatusCode.Unauthorized, "logged-out session rejected");
@@ -242,11 +272,19 @@ finally { Environment.SetEnvironmentVariable("FORGESCOPE_RUNNER_TOKEN", null); a
 sealed class FakeGitHub(string commit, string patch, Dictionary<string, byte[]> files) : HttpMessageHandler
 {
     static HttpResponseMessage Json(object value) => new(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(value), Encoding.UTF8, "application/json") };
+    public bool DenyNotifications { get; set; }
     public bool PkceExchanged { get; private set; }
     public bool LogDownloadWithoutToken { get; private set; }
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
         object payload; string path = request.RequestUri!.AbsolutePath;
+        if (path == "/notifications")
+        {
+            if (DenyNotifications) return new(HttpStatusCode.Forbidden);
+            bool alice = request.Headers.Authorization?.Parameter?.EndsWith("alice", StringComparison.Ordinal) == true;
+            return Json(new[] { new { id="thread-1", repository=new { full_name="fixture/repo" }, unread=true, updated_at="2026-11-25T00:00:00Z", reason="review_requested", subject=new { type="PullRequest", title=alice ? "Fixture merged PR" : "Bob private title", url="https://api.github.com/repos/fixture/repo/pulls/7" } } });
+        }
+        if (path == "/repos/fixture/repo/pulls/7") return Json(new { state="closed", merged_at="2026-11-25T00:00:00Z" });
         if (path == "/ci-archive")
         {
             LogDownloadWithoutToken = request.Headers.Authorization is null;
