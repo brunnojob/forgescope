@@ -103,6 +103,8 @@ public static class Program
                 };
             });
         builder.Services.AddAuthorization();
+        builder.Services.AddSingleton<NotificationSync>();
+        builder.Services.AddHostedService<NotificationPoller>();
         builder.Services.AddRateLimiter(o =>
         {
             o.RejectionStatusCode = 429;
@@ -130,6 +132,7 @@ public static class Program
             { ctx.Response.StatusCode = 503; await ctx.Response.WriteAsync("Service unavailable; retry later"); }
         });
         app.UseAuthentication(); app.UseRateLimiter(); app.UseAuthorization();
+        app.MapNotifications();
         app.MapGet("/health", () => Results.Json(new { status = "ok", service = "forgescope-hub" }));
         app.MapGet("/favicon.ico", () => ForgeScope.Workbench.BrandAssets.Get("favicon.ico"));
         app.MapGet("/assets/branding/{name}", (string name) => ForgeScope.Workbench.BrandAssets.Get(name));

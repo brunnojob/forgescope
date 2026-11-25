@@ -4,7 +4,9 @@
 
 *Demonstração animada ilustrativa das seis etapas do relatório.*
 
-**Núcleo Java 21. Painel e análise C# em .NET 10.**
+**Central web conectada ao GitHub: notificações de CI para repositórios de qualquer linguagem.**
+
+Entre pelo GitHub, escolha **Monitorar falhas de CI** em Repositórios e abra **Notificações**. Busque alertas, marque como lidos, salve e conclua. Cada alerta mostra a evidência disponível e links para o commit e a execução. Não exige terminal para esse fluxo. A análise semântica continua específica por linguagem; hoje os analisadores completos são Java e C#. Veja [configuração e limites](docs/NOTIFICATIONS.md).
 
 [Relatório de exemplo](https://brunnojob.github.io/forgescope/) · [Documentação completa](README.md) · [Migração](docs/MIGRATION-0.3.md)
 

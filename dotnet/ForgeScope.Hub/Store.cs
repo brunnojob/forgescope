@@ -5,7 +5,7 @@ using System.Text.Json;
 namespace ForgeScope.Hub;
 
 public sealed record HubSession(string Id, string UserId, string Login, string ProtectedToken, DateTimeOffset ExpiresAt);
-public sealed class Store(NpgsqlDataSource database)
+public sealed partial class Store(NpgsqlDataSource database)
 {
     public async Task Migrate()
     {

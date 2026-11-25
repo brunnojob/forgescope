@@ -91,6 +91,7 @@ try
         Check(logo.IsSuccessStatusCode && logo.Content.Headers.ContentType?.MediaType == "image/png" && bytes.Length < 1_000_000 && bytes[0] == 137, "GitHub PNG served below 1 MB");
         Check(logo.Headers.GetValues("Content-Security-Policy").Single().Contains("img-src 'self'", StringComparison.Ordinal), "CSP permits only local brand images");
     }
+    Check((await anon.GetAsync("/notifications")).StatusCode == HttpStatusCode.Unauthorized, "anonymous inbox rejected");
     Check((await anon.GetAsync("/repositories")).StatusCode == HttpStatusCode.Unauthorized, "anonymous repository access rejected");
     Check((await anon.PostAsync("/api/runner/claim", new StringContent("{}"))).StatusCode == HttpStatusCode.Unauthorized, "runner requires bearer");
     using (var spoof = new HttpRequestMessage(HttpMethod.Get, "/auth/github")) { spoof.Headers.Host = "evil.invalid"; Check((await anon.SendAsync(spoof)).StatusCode == HttpStatusCode.BadRequest, "spoofed Host rejected"); }
@@ -110,6 +111,26 @@ try
     string catalog = await alice.GetStringAsync("/catalog?lang=es&q=PCAPdroid");
     Check(catalog.Contains("PCAPdroid", StringComparison.Ordinal) && !catalog.Contains("<h2>Ghidra</h2>", StringComparison.Ordinal), "integrated RevScope catalog filter");
     string csrf = WebUtility.HtmlDecode(Regex.Match(repos, "name=\"__RequestVerificationToken\" value=\"([^\"]+)\"").Groups[1].Value);
+    using (var watch = await alice.PostAsync("/notifications/watch", new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = csrf, ["repository"] = "fixture/repo" }))) Check(watch.StatusCode == HttpStatusCode.Redirect, "watch accessible repository");
+    var notifications = app.Services.GetRequiredService<NotificationSync>();
+    await notifications.Sync("101", "fixture/repo", "fake-token-alice", CancellationToken.None);
+    var alerts = await store.Notifications("101"); Check(alerts.Count == 3, "annotations, language-neutral logs and unknown diagnosis persisted");
+    Check(alerts.Any(a => a.Path == "src/main.ts" && a.Line == 12 && a.Message.Contains("TS2304", StringComparison.Ordinal)), "TypeScript diagnostic with exact provider location");
+    Check(alerts.Any(a => a.Path == "main.go" && a.Line == 7 && a.EvidenceKind == "log"), "Go diagnostic from job log");
+    Check(alerts.Any(a => a.EvidenceKind == "step" && a.Path == ""), "missing evidence remains unknown");
+    Check(alerts.All(a => !a.Message.Contains("ghp_", StringComparison.Ordinal) && !a.Message.Contains("secret-value", StringComparison.Ordinal)), "common credentials redacted before persistence");
+    await store.SaveRunAlerts("101", "fixture/repo", 55, 2, alerts); Check((await store.Notifications("101")).Count == 3, "duplicate delivery is idempotent");
+    Check(await store.SeenRun("101", "fixture/repo", 55, 2) && !await store.SeenRun("101", "fixture/repo", 55, 3), "rerun identity includes attempt");
+    string inbox = await alice.GetStringAsync("/notifications?lang=pt-BR&q=TS2304");
+    Check(inbox.Contains("Notifica", StringComparison.Ordinal) && inbox.Contains("TS2304", StringComparison.Ordinal) && !inbox.Contains("<script>diagnostic</script>", StringComparison.Ordinal), "localized searchable inbox escapes source evidence");
+    Check(!(await bob.GetStringAsync("/notifications")).Contains("TS2304", StringComparison.Ordinal), "cross-account inbox isolation");
+    async Task<HttpStatusCode> AlertAction(HttpClient client, string key, string action) { using var result = await client.PostAsync($"/notifications/{key}/{action}", new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = csrf })); return result.StatusCode; }
+    Check(await AlertAction(alice, alerts[0].Key, "read") == HttpStatusCode.Redirect && await AlertAction(alice, alerts[0].Key, "save") == HttpStatusCode.Redirect, "read and saved state stored");
+    Check((await store.Notifications("101")).Single(a => a.Key == alerts[0].Key) is { Read: true, Saved: true }, "read/saved state survives reload");
+    Check(!await store.NotificationState("202", alerts[0].Key, "done"), "cross-account state mutation rejected");
+    Check(await AlertAction(alice, alerts[0].Key, "done") == HttpStatusCode.Redirect, "done state");
+    Check(!await store.LeaseWatch("101", "fixture/repo"), "polling lease prevents duplicate API work");
+    using (var missingCsrf = await alice.PostAsync("/notifications/watch", new FormUrlEncodedContent(new Dictionary<string, string> { ["repository"] = "fixture/repo" }))) Check(missingCsrf.StatusCode == HttpStatusCode.Forbidden, "monitor changes require CSRF");
     using (var bad = await alice.PostAsync("/investigations", new FormUrlEncodedContent(new Dictionary<string, string> { ["repository"] = "fixture/repo" }))) Check(bad.StatusCode == HttpStatusCode.Forbidden, "missing CSRF rejected");
     using var created = await alice.PostAsync("/investigations", new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = csrf, ["repository"] = "fixture/repo", ["pr"] = "1", ["run"] = "99", ["log"] = "Test.java:1: error: missing symbol", ["lang"] = "es" }));
     Check(created.StatusCode == HttpStatusCode.Redirect, "GitHub snapshot through real Java/Roslyn analyzer: " + await created.Content.ReadAsStringAsync());
@@ -148,6 +169,7 @@ finally { Environment.SetEnvironmentVariable("FORGESCOPE_RUNNER_TOKEN", null); a
 
 sealed class FakeGitHub(string commit, string patch, Dictionary<string, byte[]> files) : HttpMessageHandler
 {
+    static HttpResponseMessage Json(object value) => new(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(value), Encoding.UTF8, "application/json") };
     public bool PkceExchanged { get; private set; }
     public bool LogDownloadWithoutToken { get; private set; }
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
@@ -160,6 +182,15 @@ sealed class FakeGitHub(string commit, string patch, Dictionary<string, byte[]> 
             using (var zip = new ZipArchive(bytes, ZipArchiveMode.Create, true)) { using var writer = new StreamWriter(zip.CreateEntry("build.txt").Open()); writer.Write("Test.java:1: error: missing symbol"); }
             return new(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes.ToArray()) };
         }
+        if (path == "/repos/fixture/repo/actions/runs") return Json(new { workflow_runs = new[] { new { id = 55, run_attempt = 2, head_sha = commit, name = "CI", conclusion = "failure" } } });
+        if (path == "/repos/fixture/repo/actions/runs/55/attempts/2/jobs") return Json(new { total_count = 3, jobs = new[] {
+            new { id = 123, name = "TypeScript", conclusion = "failure", check_run_url = "https://api.github.com/repos/fixture/repo/check-runs/123", steps = new[] { new { name = "Compile", conclusion = "failure" } } },
+            new { id = 124, name = "Go", conclusion = "failure", check_run_url = "", steps = new[] { new { name = "Build", conclusion = "failure" } } },
+            new { id = 125, name = "Ruby", conclusion = "failure", check_run_url = "", steps = new[] { new { name = "Test", conclusion = "failure" } } } } });
+        if (path == "/repos/fixture/repo/check-runs/123/annotations") return Json(new[] { new { annotation_level = "failure", path = "src/main.ts", start_line = 12, message = "TS2304: Cannot find name value. <script>diagnostic</script> token=secret-value ghp_fixturetesttoken1234567890" } });
+        if (path == "/repos/fixture/repo/actions/jobs/124/logs") return new(HttpStatusCode.Redirect) { Headers = { Location = new Uri("https://fixture.blob.core.windows.net/job-log") } };
+        if (path == "/job-log") { if (request.Headers.Authorization is not null) throw new Exception("Provider token leaked"); return new(HttpStatusCode.OK) { Content = new StringContent("main.go:7:2: undefined: missingName") }; }
+        if (path == "/repos/fixture/repo/actions/jobs/125/logs") return new(HttpStatusCode.Forbidden);
         if (path.EndsWith("/actions/runs/99/logs", StringComparison.Ordinal)) return new(HttpStatusCode.Redirect) { Headers = { Location = new Uri("https://fixture.blob.core.windows.net/ci-archive") } };
         if (path.EndsWith("/actions/runs/99", StringComparison.Ordinal)) payload = new { head_sha = new string('b', 40), status = "completed", conclusion = "failure" };
         else if (path == "/login/oauth/access_token")

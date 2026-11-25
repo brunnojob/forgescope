@@ -8,9 +8,9 @@
 
 <sub>Illustrated six-stage walkthrough of the sample report. Not a live screen recording.</sub>
 
-### Evidence before edits. Code impact, CI diagnostics and actionable evidence in one local workbench.
+### A GitHub-connected inbox for CI failures, source evidence and reviewed changes.
 
-**Java 21 core. C#/.NET 10 workbench and Roslyn analysis.**
+**Monitor repositories in any language. Open the reported error, file and commit from your browser.**
 
 [Evidence-backed tour](https://brunnojob.github.io/forgescope/#pipeline-1) · [Tutorial](https://brunnojob.github.io/forgescope/#how-it-works) · [Português](README.pt-BR.md) · [Español](README.es.md) · [Architecture](docs/ARCHITECTURE.md) · [Migration notes](docs/MIGRATION-0.3.md)
 
@@ -24,6 +24,14 @@
 Changing unfamiliar code means reconstructing dependencies, reviewing patches, reading CI logs and finding maintenance work across separate tools. ForgeScope puts those evidence streams into one local investigation report.
 
 **Version 0.3 migrates application logic to Java and C#. Python and Node are no longer runtime or build requirements.** HTML/CSS remain presentation formats. The portable report uses native HTML/CSS for language navigation and a six-step guided tour. The interactive localhost workbench runs its application logic in C# on ASP.NET Core.
+
+## Notifications: start in the browser
+
+Sign in to the [ForgeScope Hub](https://forgescope-hub.thankfulmoss-3d30be42.canadacentral.azurecontainerapps.io/), open **Repositories**, and choose **Monitor CI failures**. The Notifications inbox groups failed runs by repository, with search, unread, saved and done states. Expand an alert to see the GitHub annotation or parsed job diagnostic, the source location when available, and links to the exact commit and run attempt. No terminal is required for this monitoring flow.
+
+Monitoring accepts repositories in **any language** because it consumes GitHub Actions results, check annotations and job logs. This includes diagnostics from existing compiler, test, dependency, secret-scanning and infrastructure checks when they publish that evidence. It does not introduce a new vulnerability database or cost estimator. Source dependency analysis remains analyzer-specific (currently Java and C#); unsupported semantic analysis is not presented as complete.
+
+See [notification setup, limits and deployment](docs/NOTIFICATIONS.md). The server update and additive database migration must be deployed before this new inbox appears on an existing installation.
 
 ## GitHub-connected Hub
 
