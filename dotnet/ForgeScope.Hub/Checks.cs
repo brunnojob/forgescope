@@ -41,6 +41,13 @@ public static class Checks
         Check(AlertEvidence.LogDiagnostics("upload report.json:5: completed").Count() == 0);
         Check(AlertEvidence.LogDiagnostics("../escape.go:4: undefined x").Count() == 0);
         Check(AlertEvidence.Clean("token=secret-value ghp_exampletoken1234567890").Contains("[redacted]", StringComparison.Ordinal));
+        foreach (string language in new[] { "en", "pt-BR" })
+        foreach (string theme in new[] { "black", "dark", "light" })
+        {
+            var ctx = new DefaultHttpContext(); ctx.Request.QueryString = new QueryString($"?lang={language}&theme={theme}&q=error&filter=unread");
+            Check(Views.ErrorPage(ctx, 503).Contains($"body class=\"{theme}\"", StringComparison.Ordinal));
+            Check(Views.Theme(ctx) == theme && Views.SettingsUrl(ctx, language == "en" ? "pt-BR" : "en", theme).Contains("q=error&filter=unread", StringComparison.Ordinal));
+        }
         Console.WriteLine($"Hub: {checks} revision, blockers, runner binding, replay, stale results, path and locale checks passed"); return 0;
     }
 }

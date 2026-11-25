@@ -123,6 +123,23 @@ try
     Check(await store.SeenRun("101", "fixture/repo", 55, 2) && !await store.SeenRun("101", "fixture/repo", 55, 3), "rerun identity includes attempt");
     string inbox = await alice.GetStringAsync("/notifications?lang=pt-BR&q=TS2304");
     Check(inbox.Contains("Notifica", StringComparison.Ordinal) && inbox.Contains("TS2304", StringComparison.Ordinal) && !inbox.Contains("<script>diagnostic</script>", StringComparison.Ordinal), "localized searchable inbox escapes source evidence");
+    foreach (string theme in new[] { "black", "dark", "light" })
+    {
+        string panel = await alice.GetStringAsync($"/notifications?lang=pt-BR&theme={theme}&filter=unread&repository=fixture%2Frepo&q=TS2304");
+        Check(panel.Contains($"body class=\"{theme}\"", StringComparison.Ordinal) && panel.Contains("Painel de erros", StringComparison.Ordinal), "localized error dashboard uses selected theme");
+        Check(panel.Contains("Diagnóstico original", StringComparison.Ordinal) && panel.Contains("O que verificar", StringComparison.Ordinal) && panel.Contains("TS2304", StringComparison.Ordinal), "localized guidance preserves original diagnostic");
+        string settingsHref = WebUtility.HtmlDecode(Regex.Match(panel, "href=\"([^\"]+)\" lang=\"en\"").Groups[1].Value);
+        var query = QueryHelpers.ParseQuery(new Uri(new Uri(origin), settingsHref).Query);
+        Check(query["q"] == "TS2304" && query["repository"] == "fixture/repo" && query["filter"] == "unread" && query["theme"] == theme && query["lang"] == "en", "language switch preserves filters and theme");
+        string persisted = await alice.GetStringAsync("/repositories");
+        Check(persisted.Contains($"body class=\"{theme}\"", StringComparison.Ordinal) && persisted.Contains("lang=\"pt-BR\"", StringComparison.Ordinal), "theme and language persist across pages");
+    }
+    using (var badForm = new HttpRequestMessage(HttpMethod.Post, "/notifications/watch?lang=pt-BR&theme=black"))
+    {
+        badForm.Headers.Accept.ParseAdd("text/html"); badForm.Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["repository"] = "fixture/repo" });
+        using var response = await alice.SendAsync(badForm); string html = await response.Content.ReadAsStringAsync();
+        Check(response.StatusCode == HttpStatusCode.Forbidden && html.Contains("Este formulário expirou", StringComparison.Ordinal) && html.Contains("body class=\"black\"", StringComparison.Ordinal), "browser errors use the chosen locale and theme");
+    }
     Check(!(await bob.GetStringAsync("/notifications")).Contains("TS2304", StringComparison.Ordinal), "cross-account inbox isolation");
     async Task<HttpStatusCode> AlertAction(HttpClient client, string key, string action) { using var result = await client.PostAsync($"/notifications/{key}/{action}", new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = csrf })); return result.StatusCode; }
     Check(await AlertAction(alice, alerts[0].Key, "read") == HttpStatusCode.Redirect && await AlertAction(alice, alerts[0].Key, "save") == HttpStatusCode.Redirect, "read and saved state stored");

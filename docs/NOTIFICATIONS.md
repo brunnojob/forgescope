@@ -8,7 +8,7 @@
 4. Expand an alert to inspect its evidence. Source links use the run's head SHA, not the moving default branch. Run links include the attempt number.
 5. Mark read, save, complete or reopen an alert. Completing an alert is inbox triage, not proof that the failure was fixed.
 
-The inbox is ForgeScope's own UI. It does not alter GitHub's native notification inbox, send emails, or request desktop notification permission. UI and controls support English, Portuguese and Spanish; provider diagnostics retain their original text.
+The inbox is ForgeScope's own UI. It does not alter GitHub's native notification inbox, send emails, or request desktop notification permission. The header offers English and Portuguese (Brazil), with language selection applied to navigation, forms, panels, explanations, statuses and browser error pages. Existing Spanish URLs remain compatible. Provider diagnostics, source identifiers and user-authored content retain their original text, with localized guidance beside them.
 
 ## Language coverage and evidence
 
@@ -41,3 +41,9 @@ dotnet ForgeScope.Hub.dll --migrate
 ```
 
 Use the same configured database and encrypted key setup as the Hub. The migration only adds ForgeScope-owned tables and indexes. No existing application data is deleted. If GitHub access or rate limits fail, the watch exposes a retry message rather than reporting the repository as healthy. Stopping a watch pauses collection; existing alerts remain available.
+
+## Error panels and appearance
+
+The inbox opens as an error dashboard. Its metrics reflect the current search and filters: distinct failed run attempts, diagnostics with source locations, failures without detail, and repositories represented. They are counts of collected evidence, not quality scores or complete coverage. Each error has a panel containing the original diagnostic, file/line when supplied, and a localized suggestion for what to inspect. Investigation reports use the same panel design.
+
+Choose **Deep black**, **Soft black**, or **Light** in the header. Language and theme are stored in browser cookies and apply across Hub pages. Switching either preserves the current repository filter, search, page and selected alert. Cookies are specific to the browser, not synchronized between devices. Original CI messages are not rewritten or automatically translated.
