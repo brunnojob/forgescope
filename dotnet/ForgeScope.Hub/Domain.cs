@@ -36,6 +36,7 @@ public sealed class Investigation
     public Guid Id { get; set; } = Guid.NewGuid();
     public string OwnerId { get; set; } = "";
     public string Repository { get; set; } = "";
+    public string Origin { get; set; } = "github";
     public string Commit { get; set; } = "";
     public int? PullRequest { get; set; }
     public CiRun? Ci { get; set; }
@@ -85,6 +86,7 @@ public sealed class Investigation
     }
     public void Queue(string digest, string actor)
     {
+        if (Origin != "github") throw new InvalidOperationException("Local source snapshots cannot use GitHub runner validation");
         RequireApproved(digest);
         if (string.IsNullOrWhiteSpace(Current.Patch)) throw new InvalidOperationException("A reviewed patch is required");
         if (Jobs.Any(j => j.Digest == digest && j.State is "queued" or "running")) throw new InvalidOperationException("Validation already active");

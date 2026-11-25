@@ -12,12 +12,14 @@ public sealed record Alert(string Key, string Repository, long Run, int Attempt,
     public bool Saved { get; init; }
     public bool Done { get; init; }
     public string RunUrl => $"https://github.com/{Repository}/actions/runs/{Run}/attempts/{Attempt}";
-    public string? SourceUrl => GitHub.SafePath(Path) && Regex.IsMatch(Commit, "^[a-f0-9]{40}$")
+    public bool HasSource => GitHub.SafePath(Path) && Path != ".github" && System.IO.Path.HasExtension(Path) && !AlertEvidence.Generic(Message);
+    public string? SourceUrl => HasSource && Regex.IsMatch(Commit, "^[a-f0-9]{40}$")
         ? $"https://github.com/{Repository}/blob/{Commit}/{string.Join('/', Path.Split('/').Select(Uri.EscapeDataString))}" + (Line > 0 ? $"#L{Line}" : "") : null;
 }
 
 public static class AlertEvidence
 {
+    public static bool Generic(string message) => Regex.IsMatch(message, @"^Process completed with exit code [0-9]+\.?$", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
     public static string Clean(string text, int max = 6000)
     {
         text = Regex.Replace(text, "\\x1b\\[[0-9;]*[A-Za-z]", "", RegexOptions.None, TimeSpan.FromSeconds(1));

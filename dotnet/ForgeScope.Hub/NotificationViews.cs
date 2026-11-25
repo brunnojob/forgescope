@@ -20,7 +20,7 @@ public static partial class Views
         b.Append("<section class=\"insights\" aria-label=\"" + p.T("Filtered results", "Resultados filtrados", "Resultados filtrados") + "\">");
         foreach (var (count, label) in new[] {
             (selected.Select(a => (a.Repository, a.Run, a.Attempt)).Distinct().Count(), p.T("Failed executions", "Execuções com falha", "Ejecuciones fallidas")),
-            (selected.Count(a => a.Path.Length > 0 && a.Line > 0), p.T("Diagnostics with file and line", "Diagnósticos com arquivo e linha", "Diagnósticos con archivo y línea")),
+            (selected.Count(a => a.HasSource && a.Line > 0), p.T("Diagnostics with file and line", "Diagnósticos com arquivo e linha", "Diagnósticos con archivo y línea")),
             (selected.Count(a => a.EvidenceKind == "step"), p.T("Failures without details", "Falhas sem detalhes", "Fallos sin detalles")),
             (selected.Select(a => a.Repository).Distinct().Count(), p.T("Repositories in this view", "Repositórios nesta visão", "Repositorios en esta vista")) })
             b.Append($"<div class=\"card\"><strong class=\"metric\">{count}</strong><span class=\"metric-caption\">{label}</span></div>");
@@ -29,18 +29,28 @@ public static partial class Views
             b.Append($"<a class=\"badge\" href=\"{Link(filter, group.Key)}\">{H(group.Key)} · {group.Count()} {p.T("alerts", "alertas", "alertas")}</a>");
         b.Append("</div>");
         if (selected.Length == 0) b.Append($"<div class=\"card\"><h2>{p.T("No matching alerts", "Nenhum alerta correspondente", "No hay alertas coincidentes")}</h2><p>{p.T("Add a repository and synchronize. An empty inbox does not certify that your code is free of problems.", "Adicione um repositório e sincronize. Uma caixa vazia não certifica que seu código esteja livre de problemas.", "Añade un repositorio y sincroniza. Una bandeja vacía no certifica que tu código no tenga problemas.")}</p></div>");
-        foreach (var a in selected)
+        // Group generic process status behind the meaningful diagnostic from the same step.
+        var groups = selected.GroupBy(a => (a.Repository, a.Run, a.Attempt, a.Job, a.Step));
+        foreach (var group in groups)
         {
+            var ordered = group.OrderBy(a => AlertEvidence.Generic(a.Message) ? 1 : 0).ThenBy(a => a.EvidenceKind == "step" ? 1 : 0).ToArray();
+            var a = ordered[0];
             string message = a.EvidenceKind == "step" ? p.T("This execution failed, but no detailed diagnostic was available.", "Esta execução falhou, mas não havia diagnóstico detalhado disponível.", "Esta ejecución falló, pero no había un diagnóstico detallado disponible.") : a.Message;
             string preview = message.Split('\n')[0];
             b.Append($"<article class=\"inbox-row{(!a.Read ? " unread" : "")}\"><small>{H(a.Repository)} · {H(a.Workflow)} · #{a.Run} · {p.T("Attempt", "Tentativa", "Intento")} {a.Attempt}</small><h2>{H(a.Job)}{(a.Step.Length > 0 ? " · " + H(a.Step) : "")}</h2><p>{H(preview[..Math.Min(240, preview.Length)])}</p><details{(ctx.Request.Query["alert"] == a.Key || string.IsNullOrEmpty(ctx.Request.Query["alert"]) && a == selected[0] ? " open" : "")}><summary>{p.T("View error panel", "Ver painel do erro", "Ver panel del error")}</summary>");
-            b.Append(ErrorPanel(p, p.T("Error details", "Detalhes do erro", "Detalles del error"), message, a.Path, a.Line?.ToString() ?? "", a.EvidenceKind switch {
+            b.Append(ErrorPanel(p, p.T("Error details", "Detalhes do erro", "Detalles del error"), message, a.HasSource ? a.Path : "", a.HasSource ? a.Line?.ToString() ?? "" : "", a.EvidenceKind switch {
                 "annotation" => p.T("GitHub annotation", "Anotação do GitHub", "Anotación de GitHub"),
-                "log" => p.T("CI log", "Log de CI", "Log de CI"),
+                "log" => p.T("Execution diagnostic", "Diagnóstico da execução", "Diagnóstico de ejecución"),
                 _ => p.T("Failure without detailed diagnostic", "Falha sem diagnóstico detalhado", "Fallo sin diagnóstico detallado") }, a.SourceUrl, a.EvidenceKind != "step"));
-            b.Append($"<dl class=\"error-facts\"><div><dt>{p.T("Commit", "Commit", "Commit")}</dt><dd><code>{H(a.Commit)}</code></dd></div></dl><p><a href=\"{H(a.RunUrl)}\">{p.T("Open original execution", "Abrir execução original", "Abrir ejecución original")}</a></p></details>");
-            foreach (var (action, label) in new[] { (a.Read ? "unread" : "read", a.Read ? p.T("Mark unread", "Marcar não lida", "Marcar no leída") : p.T("Mark read", "Marcar lida", "Marcar leída")), (a.Saved ? "unsave" : "save", a.Saved ? p.T("Unsave", "Remover de salvas", "Quitar de guardadas") : p.T("Save", "Salvar", "Guardar")), (a.Done ? "reopen" : "done", a.Done ? p.T("Reopen", "Reabrir", "Reabrir") : p.T("Done", "Concluir", "Completar")) })
-                b.Append($"<form method=\"post\" action=\"/notifications/{a.Key}/{action}\">{p.Hidden()}<button>{label}</button></form>");
+            foreach (var related in ordered.Skip(1))
+                b.Append(ErrorPanel(p, p.T("Related diagnostic", "Diagnóstico relacionado", "Diagnóstico relacionado"), related.Message, related.HasSource ? related.Path : "", related.HasSource ? related.Line?.ToString() ?? "" : "", p.T("Same execution step", "Mesma etapa da execução", "Mismo paso de ejecución"), related.SourceUrl));
+            b.Append($"<dl class=\"error-facts\"><div><dt>{p.T("Commit", "Commit", "Commit")}</dt><dd><code>{H(a.Commit)}</code></dd></div></dl><p><a href=\"{H(a.RunUrl)}\" target=\"_blank\" rel=\"noopener noreferrer\">{p.T("Open original execution", "Abrir execução original", "Abrir ejecución original")}</a></p></details>");
+            foreach (var item in ordered)
+            {
+                if (ordered.Length > 1) b.Append($"<small>{H(item.Message.Split('\n')[0][..Math.Min(100, item.Message.Split('\n')[0].Length)])}</small> ");
+            foreach (var (action, label) in new[] { (item.Read ? "unread" : "read", item.Read ? p.T("Mark unread", "Marcar não lida", "Marcar no leída") : p.T("Mark read", "Marcar lida", "Marcar leída")), (item.Saved ? "unsave" : "save", item.Saved ? p.T("Unsave", "Remover de salvas", "Quitar de guardadas") : p.T("Save", "Salvar", "Guardar")), (item.Done ? "reopen" : "done", item.Done ? p.T("Reopen", "Reabrir", "Reabrir") : p.T("Done", "Concluir", "Completar")) })
+                b.Append($"<form method=\"post\" action=\"/notifications/{item.Key}/{action}\">{p.Hidden()}<button>{label}</button></form>");
+            }
             b.Append("</article>");
         }
         b.Append("</section></div>"); return p.ToString();

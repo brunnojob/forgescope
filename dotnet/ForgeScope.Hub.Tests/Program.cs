@@ -200,6 +200,37 @@ try
     using var denied = await bob.PostAsync($"/investigations/{id}/queue", new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = csrf, ["version"] = "1" })); Check(denied.StatusCode == HttpStatusCode.Forbidden, "cross-session CSRF rejected");
     foreach (var lang in new[] { "pt-BR", "es", "en" }) { var html = await alice.GetStringAsync($"/investigations/{id}?lang={lang}"); Check(html.Contains("lang=\"" + lang + "\"", StringComparison.Ordinal) && !html.Contains("<script>unsafe</script>", StringComparison.Ordinal), "locale and escaped review content"); }
     await Post(alice, id, "revise", new() { ["plan"] = "Changed scope", ["patch"] = patch }); Check((await store.Get("101", id))!.Stage == "review", "new revision invalidates readiness");
+    string home = await bob.GetStringAsync("/?lang=pt-BR&theme=black");
+    Check(home.Contains("Analisar ZIP", StringComparison.Ordinal) && home.Contains("Demonstração guiada", StringComparison.Ordinal) && !home.Contains("#97efc2", StringComparison.Ordinal), "welcoming localized upload and tour with blue branding");
+    string bobCsrf = WebUtility.HtmlDecode(Regex.Match(home, "name=\"__RequestVerificationToken\" value=\"([^\"]+)\"").Groups[1].Value);
+    using (var uploadDenied = await anon.PostAsync("/source", new FormUrlEncodedContent(new Dictionary<string, string>()))) Check(uploadDenied.StatusCode == HttpStatusCode.Unauthorized, "source upload requires authentication");
+    using (var uploadCsrf = await bob.PostAsync("/source", new FormUrlEncodedContent(new Dictionary<string, string> { ["filename"] = "example.py", ["code"] = "print('hello')" }))) Check(uploadCsrf.StatusCode == HttpStatusCode.Forbidden, "source upload requires CSRF");
+    using (var pasted = await bob.PostAsync("/source", new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = bobCsrf, ["filename"] = "example.py", ["code"] = "print('hello')", ["lang"] = "pt-BR" })))
+    {
+        Check(pasted.StatusCode == HttpStatusCode.Redirect, "pasted code processed by real analyzer");
+        Guid localId = Guid.Parse(pasted.Headers.Location!.ToString().Split('/')[2].Split('?')[0]);
+        var local = (await store.Get("202", localId))!;
+        Check(local.Origin == "local" && local.Commit.Length == 64 && local.Report.GetProperty("findings").ValueKind == JsonValueKind.Array, "local report has source digest and honest origin");
+        string detail = await bob.GetStringAsync(pasted.Headers.Location);
+        Check(detail.Contains("Análise de código local", StringComparison.Ordinal) && !detail.Contains("github.com/local/source/blob", StringComparison.Ordinal), "local results have no fabricated GitHub source links");
+        Check((await alice.GetAsync(pasted.Headers.Location)).StatusCode == HttpStatusCode.NotFound, "local reports isolated by account");
+    }
+    async Task<HttpResponseMessage> UploadZip(string path)
+    {
+        using var bytes = new MemoryStream();
+        using (var archive = new ZipArchive(bytes, ZipArchiveMode.Create, true)) { using var writer = new StreamWriter(archive.CreateEntry(path).Open()); writer.Write("print('fixture')"); }
+        using var content = new MultipartFormDataContent(); content.Add(new StringContent(bobCsrf), "__RequestVerificationToken"); content.Add(new ByteArrayContent(bytes.ToArray()), "archive", "project.zip");
+        return await bob.PostAsync("/source", content);
+    }
+    using (var zipResult = await UploadZip("src/example.py")) Check(zipResult.StatusCode == HttpStatusCode.Redirect, "ZIP project processed by real analyzer");
+    using (var unsafeZip = await UploadZip("../escape.py")) Check(unsafeZip.StatusCode == HttpStatusCode.Conflict, "ZIP traversal rejected");
+    Check(!Directory.EnumerateDirectories(Path.GetTempPath(), "forgescope-upload-*").Any(), "temporary uploaded sources removed after success and rejection");
+    var processStatus = new Alert("generic", "fixture/repo", 77, 1, commit, "CI", "Download", "Fetch", "Process completed with exit code 1.", ".github", 13, "annotation", DateTimeOffset.UtcNow);
+    var rateLimit = processStatus with { Key = "rate", Message = "Dependency download HTTP 429", Path = "", Line = null };
+    var viewCtx = new Microsoft.AspNetCore.Http.DefaultHttpContext(); viewCtx.Request.QueryString = new Microsoft.AspNetCore.Http.QueryString("?lang=pt-BR");
+    string grouped = Views.Inbox(viewCtx, "fixture", [processStatus, rateLimit], []);
+    Check(grouped.IndexOf("Dependency download HTTP 429", StringComparison.Ordinal) < grouped.IndexOf("Process completed with exit code 1.", StringComparison.Ordinal) && !grouped.Contains(".github:13", StringComparison.Ordinal), "specific diagnostic precedes generic status without fabricated source location");
+    Check(grouped.Contains("Retry-After", StringComparison.Ordinal) && grouped.Contains("target=\"_blank\"", StringComparison.Ordinal), "rate-limit explanation in dashboard and external evidence opens new tab");
     var latest = await Form(alice, id);
     using var logout = await alice.PostAsync("/logout", new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = latest.Token })); Check(logout.StatusCode == HttpStatusCode.Redirect, "logout");
     Check((await alice.GetAsync($"/investigations/{id}")).StatusCode == HttpStatusCode.Unauthorized, "logged-out session rejected");

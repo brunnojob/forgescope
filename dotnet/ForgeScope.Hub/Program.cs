@@ -125,7 +125,7 @@ public static class Program
             try { await next(); }
             catch (AntiforgeryValidationException) { ctx.Response.StatusCode = 403; await WriteError(ctx, 403, "Invalid form token"); }
             catch (KeyNotFoundException) { await WriteError(ctx, 404, "Not found"); }
-            catch (Exception ex) when (ex is JsonException or FormatException or BadHttpRequestException)
+            catch (Exception ex) when (ex is JsonException or FormatException or BadHttpRequestException or InvalidDataException or DecoderFallbackException)
             { ctx.Response.StatusCode = 400; await WriteError(ctx, 400, "Invalid request input"); }
             catch (InvalidOperationException ex) { ctx.Response.StatusCode = 409; await WriteError(ctx, 409, ex.Message); }
             catch (Exception ex) when (ex is NpgsqlException or HttpRequestException or TaskCanceledException)
@@ -166,6 +166,13 @@ public static class Program
             string log = form["log"].ToString(); if (Encoding.UTF8.GetByteCount(log) > 2_000_000) return Results.BadRequest();
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ctx.RequestAborted); deadline.CancelAfter(TimeSpan.FromMinutes(5));
             var value = await github.Analyze(UserId(ctx), await Token(ctx, store, protection), repo, pr, log, analyzer, deadline.Token, run);
+            await store.Create(value); return Results.Redirect(Url(value.Id, form["lang"]));
+        }).RequireAuthorization().RequireRateLimiting("scan");
+        app.MapPost("/source", async (HttpContext ctx, Store store, Analyzer analyzer, IAntiforgery csrf) =>
+        {
+            await csrf.ValidateRequestAsync(ctx); var form = await ctx.Request.ReadFormAsync();
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ctx.RequestAborted); deadline.CancelAfter(TimeSpan.FromMinutes(3));
+            var value = await SourceImport.Analyze(UserId(ctx), form, analyzer, deadline.Token);
             await store.Create(value); return Results.Redirect(Url(value.Id, form["lang"]));
         }).RequireAuthorization().RequireRateLimiting("scan");
         app.MapPost("/import", async (HttpContext ctx, Store store, GitHub github, IDataProtectionProvider protection, IAntiforgery csrf) =>
