@@ -47,3 +47,9 @@ Use the same configured database and encrypted key setup as the Hub. The migrati
 The inbox opens as an error dashboard. Its metrics reflect the current search and filters: distinct failed run attempts, diagnostics with source locations, failures without detail, and repositories represented. They are counts of collected evidence, not quality scores or complete coverage. Each error has a panel containing the original diagnostic, file/line when supplied, and a localized suggestion for what to inspect. Investigation reports use the same panel design.
 
 Choose **Deep black**, **Soft black**, or **Light** in the header. Language and theme are stored in browser cookies and apply across Hub pages. Switching either preserves the current repository filter, search, page and selected alert. Cookies are specific to the browser, not synchronized between devices. Original CI messages are not rewritten or automatically translated.
+
+### Existing Azure installation with a DML-only application role
+
+The deployed `forgescope_app` role can use existing tables but cannot create new ones. Keep that restriction. Run [NOTIFICATION-MIGRATION.sql](NOTIFICATION-MIGRATION.sql) once as the existing schema owner/administrator; it creates only the three notification tables and grants their DML permissions to the application role. Do not grant database-wide CREATE or make the web application an administrator.
+
+The migration executable skips CREATE SCHEMA when the schema already exists, but still requires ownership/CREATE rights for the objects being migrated. It is not intended to bypass a DML-only role. Run the normal Hub entrypoint without a migration command override after applying the SQL.

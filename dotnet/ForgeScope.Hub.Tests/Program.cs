@@ -88,6 +88,20 @@ try
         Check(!(bool)(await privileges.ExecuteScalarAsync())!, "migration role has no database-wide CREATE");
         await new Store(scoped).Migrate(); Check(true, "existing schema migrates under schema-scoped ownership");
     }
+    await using (var role = app.Services.GetRequiredService<NpgsqlDataSource>().CreateCommand("CREATE ROLE forgescope_app LOGIN PASSWORD 'fixture-only'; GRANT USAGE ON SCHEMA forgescope TO forgescope_app")) await role.ExecuteNonQueryAsync();
+    await using (var migration = app.Services.GetRequiredService<NpgsqlDataSource>().CreateCommand(await File.ReadAllTextAsync("docs/NOTIFICATION-MIGRATION.sql"))) await migration.ExecuteNonQueryAsync();
+    var dmlOptions = new NpgsqlConnectionStringBuilder(database) { Username = "forgescope_app", Password = "fixture-only" };
+    await using (var dml = NpgsqlDataSource.Create(dmlOptions.ConnectionString))
+    {
+        await using var privileges = dml.CreateCommand("SELECT has_schema_privilege(current_user,'forgescope','CREATE')");
+        Check(!(bool)(await privileges.ExecuteScalarAsync())!, "application role remains DML-only after notification migration");
+        var dmlStore = new Store(dml); await dmlStore.Watch("dml-fixture", "fixture/repo");
+        Check((await dmlStore.Watches("dml-fixture")).Count == 1, "restricted role can monitor after explicit migration");
+        var evidence = new Alert(Investigation.Hash("fixture"), "fixture/repo", 1, 1, new string('a', 40), "CI", "Build", "Compile", "fixture diagnostic", "file.ts", 1, "annotation", DateTimeOffset.UtcNow);
+        await dmlStore.SaveRunAlerts("dml-fixture", "fixture/repo", 1, 1, [evidence]);
+        Check(await dmlStore.SeenRun("dml-fixture", "fixture/repo", 1, 1) && (await dmlStore.Notifications("dml-fixture")).Count == 1, "restricted role can persist notification evidence");
+        await dmlStore.Unwatch("dml-fixture", "fixture/repo");
+    }
     await app.StartAsync(); using var anon = Client(); using var alice = Client(); using var bob = Client();
     using (var favicon = await anon.GetAsync("/favicon.ico"))
     {
