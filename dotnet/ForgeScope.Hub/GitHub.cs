@@ -73,6 +73,20 @@ public sealed class GitHub(HttpClient http)
     }
     public static bool LogHost(Uri uri) => uri.Scheme == "https" && uri.Port == 443 && uri.UserInfo.Length == 0 &&
         (uri.Host.EndsWith(".blob.core.windows.net", StringComparison.OrdinalIgnoreCase) || uri.Host.EndsWith(".actions.githubusercontent.com", StringComparison.OrdinalIgnoreCase));
+    public async Task<string> JobLog(string repository, long job, string token, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repository}/actions/jobs/{job}/logs");
+        request.Headers.UserAgent.ParseAdd("ForgeScope/0.4"); request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        using var redirect = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+        if (redirect.StatusCode is not (System.Net.HttpStatusCode.Redirect or System.Net.HttpStatusCode.TemporaryRedirect) || redirect.Headers.Location is not { IsAbsoluteUri: true } location || !LogHost(location))
+            throw new InvalidOperationException("Job logs are unavailable");
+        using var download = new HttpRequestMessage(HttpMethod.Get, location);
+        using var response = await http.SendAsync(download, HttpCompletionOption.ResponseHeadersRead, ct);
+        if (!response.IsSuccessStatusCode || response.Content.Headers.ContentLength > 500_000) throw new InvalidOperationException("Job log exceeds 500 KB");
+        using var stream = await response.Content.ReadAsStreamAsync(ct); using var bytes = new MemoryStream(); var buffer = new byte[16_384]; int count;
+        while ((count = await stream.ReadAsync(buffer, ct)) > 0) { if (bytes.Length + count > 500_000) throw new InvalidOperationException("Job log exceeds 500 KB"); bytes.Write(buffer, 0, count); }
+        return new UTF8Encoding(false, true).GetString(bytes.ToArray());
+    }
     async Task<string> Logs(string repository, long run, string token, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repository}/actions/runs/{run}/logs");

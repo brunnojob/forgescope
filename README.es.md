@@ -4,7 +4,9 @@
 
 *Demostración animada ilustrativa de las seis etapas del informe.*
 
-**Evidencias antes de editar. Java 21 + C#/.NET 10.**
+**Centro web conectado a GitHub: notificaciones de CI para repositorios en cualquier lenguaje.**
+
+Inicia sesión con GitHub, elige **Monitorear fallos de CI** en Repositorios y abre **Notificaciones**. Busca alertas, márcalas como leídas, guárdalas o complétalas. Cada alerta muestra la evidencia disponible y enlaces al commit y a la ejecución. Este flujo no requiere terminal. El análisis semántico sigue siendo específico de cada lenguaje; actualmente los analizadores completos son Java y C#. Consulta [configuración y límites](docs/NOTIFICATIONS.md).
 
 [English](README.md) · [Português](README.pt-BR.md) · [Demostración en español](https://brunnojob.github.io/forgescope/es.html)
 

@@ -103,6 +103,8 @@ public static class Program
                 };
             });
         builder.Services.AddAuthorization();
+        builder.Services.AddSingleton<NotificationSync>();
+        builder.Services.AddHostedService<NotificationPoller>();
         builder.Services.AddRateLimiter(o =>
         {
             o.RejectionStatusCode = 429;
@@ -121,15 +123,16 @@ public static class Program
             ctx.Response.Headers.XContentTypeOptions = "nosniff"; ctx.Response.Headers["Referrer-Policy"] = "no-referrer";
             ctx.Response.Headers.CacheControl = "no-store";
             try { await next(); }
-            catch (AntiforgeryValidationException) { ctx.Response.StatusCode = 403; await ctx.Response.WriteAsync("Invalid form token"); }
-            catch (KeyNotFoundException) { ctx.Response.StatusCode = 404; }
+            catch (AntiforgeryValidationException) { ctx.Response.StatusCode = 403; await WriteError(ctx, 403, "Invalid form token"); }
+            catch (KeyNotFoundException) { await WriteError(ctx, 404, "Not found"); }
             catch (Exception ex) when (ex is JsonException or FormatException or BadHttpRequestException)
-            { ctx.Response.StatusCode = 400; await ctx.Response.WriteAsync("Invalid request input"); }
-            catch (InvalidOperationException ex) { ctx.Response.StatusCode = 409; await ctx.Response.WriteAsync(ex.Message); }
+            { ctx.Response.StatusCode = 400; await WriteError(ctx, 400, "Invalid request input"); }
+            catch (InvalidOperationException ex) { ctx.Response.StatusCode = 409; await WriteError(ctx, 409, ex.Message); }
             catch (Exception ex) when (ex is NpgsqlException or HttpRequestException or TaskCanceledException)
-            { ctx.Response.StatusCode = 503; await ctx.Response.WriteAsync("Service unavailable; retry later"); }
+            { ctx.Response.StatusCode = 503; await WriteError(ctx, 503, "Service unavailable; retry later"); }
         });
         app.UseAuthentication(); app.UseRateLimiter(); app.UseAuthorization();
+        app.MapNotifications();
         app.MapGet("/health", () => Results.Json(new { status = "ok", service = "forgescope-hub" }));
         app.MapGet("/favicon.ico", () => ForgeScope.Workbench.BrandAssets.Get("favicon.ico"));
         app.MapGet("/assets/branding/{name}", (string name) => ForgeScope.Workbench.BrandAssets.Get(name));
@@ -137,7 +140,7 @@ public static class Program
         app.MapGet("/auth/github", async ctx =>
         {
             if (string.IsNullOrWhiteSpace(config["GITHUB_CLIENT_ID"]) || string.IsNullOrWhiteSpace(config["GITHUB_CLIENT_SECRET"]))
-            { ctx.Response.StatusCode = 503; await ctx.Response.WriteAsync("Configure the GitHub OAuth application before signing in"); return; }
+            { ctx.Response.StatusCode = 503; await WriteError(ctx, 503, "Configure the GitHub OAuth application before signing in"); return; }
             string lang = Views.Language(ctx); await ctx.ChallengeAsync("github", new AuthenticationProperties { RedirectUri = "/?lang=" + lang });
         }).RequireRateLimiting("login");
         app.MapGet("/", async (HttpContext ctx, Store store, IAntiforgery csrf) =>
@@ -231,6 +234,16 @@ public static class Program
     static async Task<(string Owner, Guid Investigation)?> RunnerIdentity(HttpContext ctx, Store store)
     {
         var auth = ctx.Request.Headers.Authorization.ToString(); return auth.StartsWith("Bearer ", StringComparison.Ordinal) ? await store.Runner(auth[7..]) : null;
+    }
+    static Task WriteError(HttpContext ctx, int status, string machineMessage)
+    {
+        ctx.Response.StatusCode = status;
+        if (!ctx.Request.Path.StartsWithSegments("/api") && ctx.Request.Headers.Accept.Any(v => v?.Contains("text/html", StringComparison.OrdinalIgnoreCase) == true))
+        {
+            ctx.Response.ContentType = "text/html; charset=utf-8";
+            return ctx.Response.WriteAsync(Views.ErrorPage(ctx, status));
+        }
+        return ctx.Response.WriteAsync(machineMessage);
     }
     static async Task<string> Token(HttpContext ctx, Store store, IDataProtectionProvider protection)
     {

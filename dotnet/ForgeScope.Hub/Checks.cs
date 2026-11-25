@@ -36,6 +36,18 @@ public static class Checks
             var ctx = new DefaultHttpContext(); ctx.Request.QueryString = new QueryString("?lang=" + lang);
             var html = Views.Detail(ctx, "csrf", value); Check(html.Contains("lang=\"" + lang + "\"", StringComparison.Ordinal) && !html.Contains("<script>bad</script>", StringComparison.Ordinal));
         }
+        foreach (var diagnostic in new[] { "src/main.ts:12:3: error TS2304: Cannot find name x", "main.go:7:2: undefined: x", "src/main.c:9:2: error: undeclared x", "main.rb:4: syntax error", "File \"app.py\", line 8\n    missing()\nNameError: name missing is not defined", "error[E0425]: cannot find value\n --> src/main.rs:3:4", "src/Main.cs(3,9): error CS0103: missing name" })
+            Check(AlertEvidence.LogDiagnostics(diagnostic).Count() == 1);
+        Check(AlertEvidence.LogDiagnostics("upload report.json:5: completed").Count() == 0);
+        Check(AlertEvidence.LogDiagnostics("../escape.go:4: undefined x").Count() == 0);
+        Check(AlertEvidence.Clean("token=secret-value ghp_exampletoken1234567890").Contains("[redacted]", StringComparison.Ordinal));
+        foreach (string language in new[] { "en", "pt-BR" })
+        foreach (string theme in new[] { "black", "dark", "light" })
+        {
+            var ctx = new DefaultHttpContext(); ctx.Request.QueryString = new QueryString($"?lang={language}&theme={theme}&q=error&filter=unread");
+            Check(Views.ErrorPage(ctx, 503).Contains($"body class=\"{theme}\"", StringComparison.Ordinal));
+            Check(Views.Theme(ctx) == theme && Views.SettingsUrl(ctx, language == "en" ? "pt-BR" : "en", theme).Contains("q=error&filter=unread", StringComparison.Ordinal));
+        }
         Console.WriteLine($"Hub: {checks} revision, blockers, runner binding, replay, stale results, path and locale checks passed"); return 0;
     }
 }
