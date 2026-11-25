@@ -36,6 +36,9 @@ public static class Checks
             var ctx = new DefaultHttpContext(); ctx.Request.QueryString = new QueryString("?lang=" + lang);
             var html = Views.Detail(ctx, "csrf", value); Check(html.Contains("lang=\"" + lang + "\"", StringComparison.Ordinal) && !html.Contains("<script>bad</script>", StringComparison.Ordinal));
         }
+        Check(AuthNavigation.ReturnTo("/repositories?lang=es&page=2", "en") == "/repositories?lang=es&page=2");
+        foreach (string target in new[] { "https://evil.invalid/", "//evil.invalid/", "/auth/github", "/api/runner/claim", "/repositories\\evil", "/repositories#external", "/%2f%2fevil.invalid" })
+            Check(AuthNavigation.ReturnTo(target, "pt-BR") == "/?lang=pt-BR");
         Console.WriteLine($"Hub: {checks} revision, blockers, runner binding, replay, stale results, path and locale checks passed"); return 0;
     }
 }

@@ -68,9 +68,15 @@ public static class Program
                 o.Events.OnValidatePrincipal = async ctx =>
                 {
                     string? id = ctx.Principal?.FindFirstValue("session_id");
-                    if (id is null || await ctx.HttpContext.RequestServices.GetRequiredService<Store>().Session(id) is null) ctx.RejectPrincipal();
+                    if (id is null || await ctx.HttpContext.RequestServices.GetRequiredService<Store>().Session(id) is null)
+                    { ctx.RejectPrincipal(); await ctx.HttpContext.SignOutAsync("session"); }
                 };
-                o.Events.OnRedirectToLogin = ctx => { ctx.Response.StatusCode = 401; return Task.CompletedTask; };
+                o.Events.OnRedirectToLogin = ctx =>
+                {
+                    if (AuthNavigation.BrowserPage(ctx.Request)) ctx.Response.Redirect(AuthNavigation.LoginUrl(ctx.Request, Views.Language(ctx.HttpContext)));
+                    else ctx.Response.StatusCode = 401;
+                    return Task.CompletedTask;
+                };
                 o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = 403; return Task.CompletedTask; };
             })
             .AddOAuth("github", o =>
@@ -138,7 +144,7 @@ public static class Program
         {
             if (string.IsNullOrWhiteSpace(config["GITHUB_CLIENT_ID"]) || string.IsNullOrWhiteSpace(config["GITHUB_CLIENT_SECRET"]))
             { ctx.Response.StatusCode = 503; await ctx.Response.WriteAsync("Configure the GitHub OAuth application before signing in"); return; }
-            string lang = Views.Language(ctx); await ctx.ChallengeAsync("github", new AuthenticationProperties { RedirectUri = "/?lang=" + lang });
+            string lang = Views.Language(ctx); await ctx.ChallengeAsync("github", new AuthenticationProperties { RedirectUri = AuthNavigation.ReturnTo(ctx.Request.Query["returnTo"].FirstOrDefault(), lang) });
         }).RequireRateLimiting("login");
         app.MapGet("/", async (HttpContext ctx, Store store, IAntiforgery csrf) =>
         {

@@ -55,13 +55,13 @@ var app = ForgeScope.Hub.Program.CreateApp([], b =>
 app.Urls.Add(origin); int checks = 0;
 void Check(bool condition, string label) { if (!condition) throw new Exception("Hub HTTP check failed: " + label); checks++; }
 HttpClient Client() => new(new HttpClientHandler { AllowAutoRedirect = false, CookieContainer = new CookieContainer() }) { BaseAddress = new Uri(origin), Timeout = TimeSpan.FromMinutes(5) };
-async Task SignIn(HttpClient client, string account)
+async Task SignIn(HttpClient client, string account, string? destination = null)
 {
-    using var begin = await client.GetAsync("/auth/github?lang=pt-BR"); Check(begin.StatusCode == HttpStatusCode.Redirect, "OAuth challenge");
+    using var begin = await client.GetAsync("/auth/github?lang=pt-BR" + (destination is null ? "" : "&returnTo=" + Uri.EscapeDataString(destination))); Check(begin.StatusCode == HttpStatusCode.Redirect, "OAuth challenge");
     var query = QueryHelpers.ParseQuery(begin.Headers.Location!.Query); Check(query["code_challenge_method"] == "S256" && query["code_challenge"].ToString().Length == 43, "PKCE S256");
     Check(query["redirect_uri"] == origin + "/signin-github", "canonical callback");
     using var callback = await client.GetAsync("/signin-github?code=" + account + "&state=" + Uri.EscapeDataString(query["state"]!));
-    Check(callback.StatusCode == HttpStatusCode.Redirect && callback.Headers.Location!.ToString() == "/?lang=pt-BR", "OAuth callback success");
+    Check(callback.StatusCode == HttpStatusCode.Redirect && callback.Headers.Location!.ToString() == AuthNavigation.ReturnTo(destination, "pt-BR"), "OAuth callback success");
     using var replay = await client.GetAsync("/signin-github?code=" + account + "&state=" + Uri.EscapeDataString(query["state"]!));
     Check(replay.Headers.Location?.ToString() == "/?auth=failed", "OAuth callback replay rejected");
 }
@@ -92,6 +92,22 @@ try
         Check(logo.Headers.GetValues("Content-Security-Policy").Single().Contains("img-src 'self'", StringComparison.Ordinal), "CSP permits only local brand images");
     }
     Check((await anon.GetAsync("/repositories")).StatusCode == HttpStatusCode.Unauthorized, "anonymous repository access rejected");
+    using (var request = new HttpRequestMessage(HttpMethod.Get, "/repositories?lang=es&page=2"))
+    {
+        request.Headers.Accept.ParseAdd("text/html"); using var response = await anon.SendAsync(request);
+        Check(response.StatusCode == HttpStatusCode.Redirect, "browser navigation redirects instead of raw 401");
+        var location = response.Headers.Location!.ToString(); var query = QueryHelpers.ParseQuery(new Uri(new Uri(origin), location).Query);
+        Check(location.StartsWith("/auth/github?", StringComparison.Ordinal) && query["returnTo"] == "/repositories?lang=es&page=2", "local destination and filters preserved");
+    }
+    using (var request = new HttpRequestMessage(HttpMethod.Post, "/investigations"))
+    { request.Headers.Accept.ParseAdd("text/html"); Check((await anon.SendAsync(request)).StatusCode == HttpStatusCode.Unauthorized, "unauthenticated POST never replayed through login"); }
+    using (var browser = Client())
+    {
+        await SignIn(browser, "alice", "/repositories?lang=es&page=2");
+        Check((await browser.GetAsync("/repositories")).IsSuccessStatusCode, "OAuth return establishes valid repository session");
+    }
+    using (var unsafeReturn = Client()) await SignIn(unsafeReturn, "alice", "https://evil.invalid/");
+
     Check((await anon.PostAsync("/api/runner/claim", new StringContent("{}"))).StatusCode == HttpStatusCode.Unauthorized, "runner requires bearer");
     using (var spoof = new HttpRequestMessage(HttpMethod.Get, "/auth/github")) { spoof.Headers.Host = "evil.invalid"; Check((await anon.SendAsync(spoof)).StatusCode == HttpStatusCode.BadRequest, "spoofed Host rejected"); }
     await SignIn(alice, "alice"); await SignIn(bob, "bob"); Check(fake.PkceExchanged, "verifier exchanged on server");
@@ -142,6 +158,15 @@ try
     var latest = await Form(alice, id);
     using var logout = await alice.PostAsync("/logout", new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = latest.Token })); Check(logout.StatusCode == HttpStatusCode.Redirect, "logout");
     Check((await alice.GetAsync($"/investigations/{id}")).StatusCode == HttpStatusCode.Unauthorized, "logged-out session rejected");
+    await SignIn(bob, "bob");
+    await using (var revoke = app.Services.GetRequiredService<NpgsqlDataSource>().CreateCommand("DELETE FROM forgescope.sessions WHERE user_id='202'")) await revoke.ExecuteNonQueryAsync();
+    using (var expired = new HttpRequestMessage(HttpMethod.Get, "/repositories?lang=en"))
+    {
+        expired.Headers.Accept.ParseAdd("text/html"); using var response = await bob.SendAsync(expired);
+        Check(response.StatusCode == HttpStatusCode.Redirect && response.Headers.Location!.ToString().StartsWith("/auth/github?", StringComparison.Ordinal), "revoked session redirects browser to login");
+        Check(response.Headers.TryGetValues("Set-Cookie", out var cookies) && cookies.Any(c => c.Contains("expires=", StringComparison.OrdinalIgnoreCase)), "invalid session cookie cleared");
+    }
+    Check((await bob.GetAsync("/repositories")).StatusCode == HttpStatusCode.Unauthorized, "revoked API access remains unauthorized");
     Console.WriteLine($"Hub HTTP/PostgreSQL: {checks} checks passed, including OAuth protocol with fake GitHub and real Java/Roslyn + Git worktree validation");
 }
 finally { Environment.SetEnvironmentVariable("FORGESCOPE_RUNNER_TOKEN", null); await app.StopAsync(); await app.DisposeAsync(); Directory.Delete(directory, true); }
