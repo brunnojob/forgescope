@@ -79,6 +79,15 @@ async Task<HttpResponseMessage> Post(HttpClient client, Guid id, string action, 
 try
 {
     var store = app.Services.GetRequiredService<Store>(); await store.Migrate(); await store.Migrate(); Check(true, "idempotent isolated schema");
+    // A schema owner can migrate its own objects without database-wide CREATE permission.
+    await using (var permissions = app.Services.GetRequiredService<NpgsqlDataSource>().CreateCommand("CREATE ROLE hub_schema_owner LOGIN; ALTER SCHEMA forgescope OWNER TO hub_schema_owner; " + string.Join(";", new[] { "sessions", "investigations", "runner_tokens", "data_protection_keys", "repo_watches", "notifications", "monitored_runs" }.Select(t => "ALTER TABLE forgescope." + t + " OWNER TO hub_schema_owner")))) await permissions.ExecuteNonQueryAsync();
+    var scopedOptions = new NpgsqlConnectionStringBuilder(database) { Username = "hub_schema_owner" };
+    await using (var scoped = NpgsqlDataSource.Create(scopedOptions.ConnectionString))
+    {
+        await using var privileges = scoped.CreateCommand("SELECT has_database_privilege(current_user,current_database(),'CREATE')");
+        Check(!(bool)(await privileges.ExecuteScalarAsync())!, "migration role has no database-wide CREATE");
+        await new Store(scoped).Migrate(); Check(true, "existing schema migrates under schema-scoped ownership");
+    }
     await app.StartAsync(); using var anon = Client(); using var alice = Client(); using var bob = Client();
     using (var favicon = await anon.GetAsync("/favicon.ico"))
     {

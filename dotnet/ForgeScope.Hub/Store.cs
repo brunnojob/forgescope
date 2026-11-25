@@ -11,7 +11,11 @@ public sealed partial class Store(NpgsqlDataSource database)
     {
         using var stream = typeof(Store).Assembly.GetManifestResourceStream("ForgeScope.Hub.schema.sql")!;
         using var reader = new StreamReader(stream);
-        await using var command = database.CreateCommand(await reader.ReadToEndAsync()); await command.ExecuteNonQueryAsync();
+        string sql = await reader.ReadToEndAsync();
+        // Existing-schema migrations need schema CREATE, not database-wide CREATE.
+        await using (var exists = database.CreateCommand("SELECT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname='forgescope')"))
+            if ((bool)(await exists.ExecuteScalarAsync())!) sql = sql.Replace("CREATE SCHEMA IF NOT EXISTS forgescope;", "", StringComparison.Ordinal);
+        await using var command = database.CreateCommand(sql); await command.ExecuteNonQueryAsync();
     }
     public async Task SaveSession(HubSession session)
     {
